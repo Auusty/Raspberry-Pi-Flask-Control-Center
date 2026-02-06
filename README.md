@@ -6,6 +6,20 @@ This project was built for a real, always-on environment and prioritizes stabili
 
 ---
 
+## 🖥 PC Integration
+
+This control center can optionally connect to a Windows PC listener service:
+
+- **PC Listener (Windows)**  
+  https://github.com/Auusty/pc_listener
+
+The PC listener enables:
+- Steam game launching
+- Discord voice automation
+- Screen sharing
+- Local app launching
+- File transfers from Pi → PC
+
 ## Hardware / Environment
 
 Designed for:
