@@ -1,0 +1,33 @@
+# Core
+Flask
+flask-cors
+Flask-Limiter
+python-dotenv
+psutil
+
+# Networking / API
+requests
+
+# Govee
+govee-python
+paho-mqtt
+cachetools
+
+# Bambu Lab
+bambu-lab-cloud-api
+pycryptodomex
+
+# Steam
+steam
+vdf
+
+# Discord
+discord.py
+
+# Media / Camera
+opencv-python
+pillow
+numpy
+
+# System / process control
+pexpect

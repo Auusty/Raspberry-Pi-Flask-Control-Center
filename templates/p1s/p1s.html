@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>P1S Printer</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="index-page page">
+
+<!-- ================= Header ================= -->
+<div class="header">
+    <div class="header-left">
+        <a href="{{ url_for('index') }}" class="header-btn back-btn">
+            <img src="{{ url_for('static', filename='icons/back.svg') }}"
+                 class="icon-img"
+                 alt="Back">
+        </a>
+
+        <span id="header-time" class="header-time">--:--</span>
+    </div>
+
+    <h1 class="header-title">P1S Printer</h1>
+
+    <div class="header-status" style="display:flex; align-items:center; gap:10px;">
+
+        <!-- Surface button -->
+        <button
+            class="header-btn surface-btn"
+            onclick="cycleSurface()"
+            title="Change surface"
+        >
+            <img src="{{ url_for('static', filename='icons/layers.svg') }}"
+                 class="icon-img"
+                 alt="Surface">
+        </button>
+
+        <!-- Theme button -->
+        <button
+            class="header-btn theme-btn"
+            onclick="cycleTheme()"
+            title="Change theme"
+        >
+            <img src="{{ url_for('static', filename='icons/palette.svg') }}"
+                 class="icon-img"
+                 alt="Theme">
+        </button>
+
+        <!-- Printer status (unchanged) -->
+        <span id="p1s-status-dot" class="status-dot unknown"></span>
+        <span id="p1s-header-status">--</span>
+    </div>
+</div>
+
+<!-- Global theme + surface logic -->
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid main-grid">
+
+        <a href="{{ url_for('p1s.p1s_current_print') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/monitor_heart.svg') }}"
+                     class="icon-img">
+            </div>
+            <div class="label">Status</div>
+        </a>
+
+        <a href="{{ url_for('p1s.p1s_ams') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/viewinar.svg') }}"
+                     class="icon-img">
+            </div>
+            <div class="label">AMS</div>
+        </a>
+
+        <a href="{{ url_for('p1s.p1s_camera_view') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/videocamera.svg') }}"
+                     class="icon-img">
+            </div>
+            <div class="label">Camera</div>
+        </a>
+
+        <!-- Launch Bambu Studio (PC-aware) -->
+        <button class="tile tap-pc" id="bambu-tile" onclick="launchBambuStudio()">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/BambuStudio.svg') }}"
+                     class="icon-img">
+            </div>
+            <div class="label" id="bambu-btn-label">Bambu Studio</div>
+        </button>
+
+    </div>
+</div>
+
+{% include "partials/screensaver.html" %}
+
+<!-- ================= Scripts ================= -->
+<script>
+let pcOnline = false;
+
+/* ---------- Header status ---------- */
+async function updateP1SHeader() {
+    try {
+        const res = await fetch("/api/p1s/status", { cache: "no-store" });
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        const textEl = document.getElementById("p1s-header-status");
+        const dotEl  = document.getElementById("p1s-status-dot");
+        if (!textEl || !dotEl) return;
+
+        const state = data.state || "Unknown";
+        const pct = Number(data.progress);
+
+        if (state === "Printing" && Number.isFinite(pct)) {
+            textEl.textContent = `${state} · ${pct}%`;
+        } else {
+            textEl.textContent = state;
+        }
+
+        dotEl.className = "status-dot";
+
+        if (state === "Printing") dotEl.classList.add("ingame");
+        else if (state === "Preparing" || state === "Paused") dotEl.classList.add("away");
+        else if (state === "Idle" || state === "Complete") dotEl.classList.add("online");
+        else if (state === "Error" || state === "Offline") dotEl.classList.add("offline");
+        else dotEl.classList.add("unknown");
+
+    } catch {}
+}
+
+/* ---------- PC health ---------- */
+async function checkPCHealth() {
+    const tile = document.getElementById("bambu-tile");
+    const label = document.getElementById("bambu-btn-label");
+
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+
+        pcOnline = !!data.online;
+
+        if (!pcOnline) {
+            tile.classList.add("disabled");
+            label.textContent = "PC Offline";
+        } else {
+            tile.classList.remove("disabled");
+            label.textContent = "Bambu Studio";
+        }
+    } catch {
+        pcOnline = false;
+        tile.classList.add("disabled");
+        label.textContent = "PC Offline";
+    }
+}
+
+/* ---------- Launch ---------- */
+async function launchBambuStudio() {
+    if (!pcOnline) return;
+
+    const label = document.getElementById("bambu-btn-label");
+    label.textContent = "Launching…";
+
+    try {
+        await fetch("/api/p1s/launch_bambu", { method: "POST" });
+    } catch {}
+
+    setTimeout(() => {
+        label.textContent = "Bambu Studio";
+    }, 1500);
+}
+
+/* ---------- Start loops ---------- */
+updateP1SHeader();
+setInterval(updateP1SHeader, 2000);
+
+checkPCHealth();
+setInterval(checkPCHealth, 5000);
+</script>
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+</body>
+</html>

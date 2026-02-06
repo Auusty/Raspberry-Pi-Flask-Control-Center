@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Programs</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="programs-page page">
+    
+{# ================= Header config ================= #}
+{% set title = "Programs" %}
+{% set status_text = "--" %}
+{% set status_class = "unknown" %}
+{% set back_url = url_for('index') %}
+{% set back_icon = url_for('static', filename='icons/back.svg') %}
+{% set show_time = true %}
+
+{% include "partials/header.html" %}
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid">
+
+        <!-- Steam -->
+        <a href="{{ url_for('steam.steam_program') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/steam.svg') }}"
+                     class="icon-img material"
+                     alt="Steam">
+            </div>
+            <div class="label">Steam</div>
+        </a>
+
+        <!-- Discord -->
+            <a href="{{ url_for('discord.discord_page') }}" class="tile tap-nav">
+                <div class="icon">
+                    <img src="{{ url_for('static', filename='icons/discord.svg') }}"
+                        class="icon-img material"
+                        alt="Discord">
+                </div>
+                <div class="label">Discord</div>
+            </a>
+            
+        <!-- Upload Files -->
+        <a href="{{ url_for('upload_page') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/folder.svg') }}"
+                     class="icon-img"
+                     alt="Upload Files">
+            </div>
+            <div class="label">Upload Files</div>
+        </a>
+
+        <!-- Websites -->
+        <a href="{{ url_for('websites.websites') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/web.svg') }}"
+                     class="icon-img"
+                     alt="Websites">
+            </div>
+            <div class="label">Websites</div>
+        </a>
+
+    </div>
+</div>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+<script>
+/* ==================================================
+   PC Health → Header Status
+================================================== */
+async function checkPCHealth() {
+    const dot = document.querySelector(".header-status .status-dot");
+    const textNode = dot.nextSibling;
+
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+
+        if (data.online) {
+            dot.className = "status-dot online";
+            textNode.textContent = "PC Online";
+        } else {
+            dot.className = "status-dot offline";
+            textNode.textContent = " PC Offline";
+        }
+    } catch {
+        dot.className = "status-dot offline";
+        textNode.textContent = " PC Offline";
+    }
+}
+
+checkPCHealth();
+setInterval(checkPCHealth, 5000);
+</script>
+
+</body>
+</html>

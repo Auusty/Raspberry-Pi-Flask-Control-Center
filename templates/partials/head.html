@@ -1,0 +1,23 @@
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+
+<!-- Favicon -->
+<link rel="icon"
+      type="image/svg+xml"
+      href="{{ url_for('static', filename='icons/kiosk.svg') }}">
+
+<!-- Optional PNG fallback (recommended for Windows) -->
+<link rel="alternate icon"
+      type="image/png"
+      href="{{ url_for('static', filename='icons/kiosk.png') }}">
+
+<script src="{{ url_for('static', filename='js/page-transitions.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/toast.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/system_watcher.js') }}" defer></script>
+
+{% include "partials/toast.html" %}
+

@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Discord</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="page programs-page discord-page">
+
+{# ================= Header ================= #}
+{% set title = "Discord" %}
+{% set status_text = "Pi Spy" %}
+{% set status_class = "unknown" %}
+{% set back_url = url_for('programs') %}
+{% set back_icon = url_for('static', filename='icons/back.svg') %}
+{% set show_time = true %}
+{% include "partials/header.html" %}
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid">
+
+        <!-- Voice Channel Tile -->
+        <div class="tile tap-hold"
+             id="voiceTile"
+             onmousedown="startHold(event)"
+             onmouseup="endPress(event)"
+             ontouchstart="startHold(event)"
+             ontouchmove="onTextMove(event)"
+             ontouchend="endPress(event)">
+
+            <div class="discord-channel-name">
+                <span id="voice-channel-name" class="channel-title">
+                    Staff Voicechat
+                </span>
+
+                <span class="channel-users">
+                    <img src="/static/icons/group.svg"
+                         class="group-icon"
+                         alt="Users">
+                    <span id="voice-count">0</span>
+                </span>
+            </div>
+
+            <div class="discord-members" id="voice-members">
+                Loading…
+            </div>
+        </div>
+
+        <!-- Text Channel Tile -->
+        <div class="tile discord-text-tile tap-hold"
+            id="textTile"
+            onmousedown="startTextHold(event)"
+            onmouseup="endTextPress(event)"
+            ontouchstart="startTextHold(event)"
+            ontouchmove="onTextMove(event)"
+            ontouchend="endTextPress(event)">
+
+            <div class="discord-channel-name">
+                <span id="text-channel-name" class="channel-title">
+                    # Loading...
+                </span>
+        </div>
+
+        <div class="discord-text-messages" id="text-messages">
+            <div class="text-placeholder">
+                Tap to open channel
+            </div>
+        </div>
+    </div>
+
+
+        <!-- Screen Share Tile -->
+        <div class="tile discord-share-tile tap-pc"
+            id="screenShareTile"
+            onclick="toggleScreenShare()">
+
+            <!-- LIVE badge -->
+            <div class="live-badge" id="screenShareLive">LIVE</div>
+
+            <div class="discord-share-text">
+                <div class="share-title" id="screenShareTitle">
+                    Start streaming in:
+                </div>
+                <div class="share-channel" id="screenShareChannel">
+            —
+                </div>
+            </div>
+
+            <div class="discord-share-icon">
+                <img id="screenShareIcon"
+                    src="/static/icons/screen_share.svg"
+                    alt="Screen Share">
+            </div>
+        </div>
+
+        <!-- Mute / Deafen Tile -->
+        <div class="tile discord-mute-tile tap-hold tap-pc"
+            id="muteTile"
+            onmousedown="startMuteHold(event)"
+            onmouseup="endMutePress(event)"
+            ontouchstart="startMuteHold(event)"
+            ontouchend="endMutePress(event)">
+
+            <!-- Mic side (top-left) -->
+            <div class="mute-half mic-half">
+                <img id="muteIcon"
+                    src="/static/icons/mic.svg"
+                    alt="Mic">
+            </div>
+
+            <!-- Deafen side (bottom-right) -->
+            <div class="mute-half deafen-half">
+                <img id="deafenIcon"
+                    src="/static/icons/headphones.svg"
+                    alt="Deafen">
+            </div>
+
+            <!-- Diagonal divider -->
+            <div class="mute-diagonal"></div>
+        </div>
+
+<!-- ================= Picker (LONG PRESS) ================= -->
+<div id="discordOverlay"
+     class="discord-overlay"
+     onclick="closePicker()"></div>
+
+<div id="discordPicker" class="discord-picker">
+    <div class="discord-picker-header">
+        <span>Select Voice Channel</span>
+        <button type="button" onclick="closePicker()">×</button>
+    </div>
+    <div id="discordPickerList" class="discord-picker-list"></div>
+</div>
+
+<!-- ================= Confirm Popup (TAP) ================= -->
+<div id="discordConfirmOverlay"
+     class="confirm-overlay"
+     onclick="closeDiscordConfirm()"></div>
+
+<div id="discordConfirmPanel" class="confirm-panel">
+    <div class="confirm-header">
+        <div class="confirm-title">Join Voice Channel</div>
+        <button class="confirm-close" onclick="closeDiscordConfirm()">×</button>
+    </div>
+
+    <div class="confirm-body">
+        <div id="confirmChannelName" class="confirm-game">
+            Channel Name
+        </div>
+
+        <div class="confirm-sub">
+            Are you sure you want to join this voice channel?
+        </div>
+
+        <div class="confirm-actions">
+
+            <!-- Join/Leave -->
+            <!-- Primary action (Join / Leave – controlled by JS) -->
+            <button class="tile" id="confirmPrimaryBtn">
+                <img src="{{ url_for('static', filename='icons/mic.svg') }}"
+                    class="btn-icon"
+                    alt="">
+                <span id="confirmPrimaryText">Join Channel</span>
+            </button>
+
+
+            <!-- Cancel -->
+            <button class="tile" onclick="closeDiscordConfirm()">
+                <img src="{{ url_for('static', filename='icons/close.svg') }}"
+                     class="btn-icon"
+                     alt="">
+                <span>Cancel</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ================= State ================= */
+let discordData = null;
+let selectedChannel = "Staff Voicechat";
+let holdTimer = null;
+let didHold = false;
+let lastRenderKey = null;
+let pcOnline = false;
+let selectedTextChannel = "staff-chat";
+let textChannels = [];
+let textHoldTimer = null;
+let didTextHold = false;
+let touchStartY = 0;
+let touchMoved = false;
+let mouseMoved = false;
+let suppressNextTextTap = false;
+
+const SCROLL_THRESHOLD = 10; // px
+const HOLD_TIME = 600;
+const SELF_NAME = "Auusty";
+
+
+/* ================= Am I in the/a Discord Channel ================= */
+
+function isSelfInSelectedChannel() {
+    if (!discordData) return false;
+
+    const guild = Object.keys(discordData)[0];
+    const members = (discordData[guild] && discordData[guild][selectedChannel]) || [];
+
+    return members.some(m => m.name === SELF_NAME);
+}
+
+function isSelfInAnyVoiceChannel() {
+    if (!discordData) return false;
+
+    const guild = Object.keys(discordData)[0];
+    const channels = discordData[guild] || {};
+
+    for (const channelName in channels) {
+        const members = channels[channelName] || [];
+        if (members.some(m => m.name === SELF_NAME)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+async function updatePCHealth() {
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+        pcOnline = !!data.online;
+    } catch {
+        pcOnline = false;
+    }
+}
+
+/* ================= Mute / Deafen Hold Logic ================= */
+
+let muteHoldTimer = null;
+let muteDidHold = false;
+
+function startMuteHold(e) {
+    if (e && e.cancelable) e.preventDefault();
+    muteDidHold = false;
+
+    if (muteHoldTimer) clearTimeout(muteHoldTimer);
+
+    muteHoldTimer = setTimeout(() => {
+        muteDidHold = true;
+
+        // LONG PRESS → Deafen
+        triggerVoiceAction("deafen");
+    }, HOLD_TIME);
+}
+
+function endMutePress(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    if (muteHoldTimer) clearTimeout(muteHoldTimer);
+
+    if (!muteDidHold) {
+        // SHORT PRESS → Mute
+        triggerVoiceAction("mute");
+    }
+}
+
+function triggerVoiceAction(action) {
+    if (!isSelfInAnyVoiceChannel()) {
+        console.warn("Not in voice");
+        return;
+    }
+
+    if (!pcOnline) {
+        console.warn("PC offline");
+        return;
+    }
+
+    fetch("/api/discord/voice_action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+    })
+    .then(r => r.json())
+    .then(d => console.log("VOICE ACTION:", d))
+    .catch(err => console.error("Voice action failed", err));
+}
+
+/* ================= Tap vs Hold ================= */
+function startHold(e) {
+    if (e && e.cancelable) e.preventDefault();
+    didHold = false;
+
+    // cancel any old timer
+    if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+    }
+
+    holdTimer = setTimeout(() => {
+        didHold = true;
+        openPicker(); // No event passed
+    }, HOLD_TIME);
+}
+
+function endPress(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent parent handler
+    }
+
+    if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+    }
+
+    if (!didHold) {
+        openDiscordConfirm();
+    }
+}
+
+
+function startTextHold(e) {
+    didTextHold = false;
+    touchMoved = false;
+    mouseMoved = false;
+
+    // record initial touch position
+    if (e.touches && e.touches.length) {
+        touchStartY = e.touches[0].clientY;
+    }
+
+    if (textHoldTimer) {
+        clearTimeout(textHoldTimer);
+        textHoldTimer = null;
+    }
+
+    textHoldTimer = setTimeout(() => {
+        // if user scrolled, do nothing
+        if (touchMoved || mouseMoved) return;
+
+        // Prevent default after scroll detection
+        if (e && e.cancelable) e.preventDefault();
+
+        didTextHold = true;
+        openTextPicker();
+    }, HOLD_TIME);
+}
+
+function onTextMove(e) {
+    if (!e.touches || !e.touches.length) return;
+
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+
+    if (dy > SCROLL_THRESHOLD) {
+        touchMoved = true;
+
+        // cancel hold if scrolling
+        if (textHoldTimer) {
+            clearTimeout(textHoldTimer);
+            textHoldTimer = null;
+        }
+    }
+}
+
+function endTextPress(e) {
+    if (textHoldTimer) {
+        clearTimeout(textHoldTimer);
+        textHoldTimer = null;
+    }
+
+    // If an image consumed this tap, do NOTHING
+    if (suppressNextTextTap) {
+        suppressNextTextTap = false;
+        return;
+    }
+
+    if (touchMoved || mouseMoved) {
+        touchMoved = false;
+        mouseMoved = false;
+        return;
+    }
+
+    if (!didTextHold) {
+        openTextChannel();
+    }
+}
+
+function openTextChannel() {
+    fetch("/api/discord/text/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            channel_name: selectedTextChannel
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log("TEXT OPEN RESPONSE:", data);
+    })
+    .catch(err => {
+        console.error("TEXT OPEN ERROR:", err);
+    });
+}
+
+function updateTextTile() {
+    const nameEl = document.getElementById("text-channel-name");
+    const box = document.getElementById("text-messages");
+
+    if (!nameEl || !box) return;
+
+    nameEl.textContent = `# ${selectedTextChannel}`;
+
+    box.innerHTML = `
+        <div class="text-placeholder">
+            Tap to open #${selectedTextChannel}
+        </div>
+    `;
+}
+
+async function fetchTextMessages() {
+    try {
+        const res = await fetch(
+            `/api/discord/text/messages?channel=${selectedTextChannel}`,
+            { cache: "no-store" }
+        );
+
+        const messages = await res.json();
+        const box = document.getElementById("text-messages");
+        if (!box) return;
+
+        const wasAtBottom =
+            Math.abs(box.scrollHeight - box.scrollTop - box.clientHeight) < 10;
+
+        if (!messages.length) {
+            box.innerHTML = `<div class="text-placeholder">No messages</div>`;
+            return;
+        }
+
+        box.innerHTML = "";
+
+        messages.forEach(m => {
+            const row = document.createElement("div");
+            row.className =
+                "discord-text-row" +
+                (m.author === SELF_NAME ? " self" : "");
+
+            row.innerHTML = `
+                <img class="avatar" src="${m.avatar}">
+                <div class="text-body">
+                    <div class="author">${m.author}</div>
+                    ${m.content ? `<div class="content">${m.content}</div>` : ""}
+                    ${
+                        m.attachments && m.attachments.length
+                            ? `<div class="discord-text-images">
+                                ${m.attachments.map(url => `
+                                    <img
+                                        src="${url}"
+                                        class="discord-image"
+                                        loading="lazy"
+                                        onpointerdown="
+                                            suppressNextTextTap = true;
+                                            event.stopPropagation();
+                                        "
+                                        ontouchstart="
+                                            suppressNextTextTap = true;
+                                            event.stopPropagation();
+                                        "
+                                        onclick="
+                                            suppressNextTextTap = true;
+                                            event.stopPropagation();
+                                            openImageViewer('${url}');
+                                        "
+                                    >
+                                `).join("")}
+                            </div>`
+                            : ""
+                    }
+                </div>
+            `;
+
+            box.appendChild(row);
+        });
+
+        if (wasAtBottom) {
+            box.scrollTop = box.scrollHeight;
+        }
+
+    } catch (e) {
+        console.error("Text fetch failed", e);
+    }
+}
+
+
+
+function openTextPicker() {
+    if (!textChannels.length) return;
+
+    const list = document.getElementById("discordPickerList");
+    list.innerHTML = "";
+
+    textChannels.forEach(name => {
+        const item = document.createElement("div");
+        item.className =
+            "discord-picker-item" +
+            (name === selectedTextChannel ? " selected" : "");
+
+        item.textContent = `# ${name}`;
+
+        item.onclick = () => {
+            selectedTextChannel = name;
+            updateTextTile();
+            closePicker();
+        };
+
+        list.appendChild(item);
+    });
+
+    document.querySelector(".discord-picker-header span").textContent =
+        "Select Text Channel";
+
+    document.getElementById("discordOverlay").classList.add("show");
+    document.getElementById("discordPicker").classList.add("show");
+}
+
+
+/* ================= Confirm Popup ================= */
+function openDiscordConfirm() {
+    const inChannel = isSelfInSelectedChannel();
+
+    const titleEl = document.querySelector(".confirm-title");
+    const nameEl = document.getElementById("confirmChannelName");
+    const btn = document.getElementById("confirmPrimaryBtn");
+    const btnText = document.getElementById("confirmPrimaryText");
+    const btnIcon = btn.querySelector("img");
+
+    nameEl.textContent = selectedChannel;
+
+    if (inChannel) {
+        titleEl.textContent = "Leave Voice Channel";
+        btnText.textContent = "Leave Channel";
+        btnIcon.src = "/static/icons/logout.svg";
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            confirmDiscordLeave();
+        };
+    } else {
+        titleEl.textContent = "Join Voice Channel";
+        btnText.textContent = "Join Channel";
+        btnIcon.src = "/static/icons/mic.svg";
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            confirmDiscordJoin();
+        };
+    }
+
+    document.getElementById("discordConfirmOverlay").classList.add("show");
+    document.getElementById("discordConfirmPanel").classList.add("show");
+
+    checkPCHealth();
+}
+
+function closeDiscordConfirm() {
+    document.getElementById("discordConfirmOverlay").classList.remove("show");
+    document.getElementById("discordConfirmPanel").classList.remove("show");
+}
+
+async function checkPCHealth() {
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+        pcOnline = !!data.online;
+    } catch {
+        pcOnline = false;
+    }
+}
+
+function confirmDiscordJoin() {
+    if (!pcOnline || !discordData) return;
+
+    const guild = Object.keys(discordData)[0];
+    const members = discordData[guild][selectedChannel] || [];
+    const memberCount = members.length;
+
+    fetch("/api/discord/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            channel_name: selectedChannel,
+            member_count: memberCount
+        })
+    });
+
+    closeDiscordConfirm();
+}
+
+function confirmDiscordLeave() {
+    if (!pcOnline) return;
+
+    fetch("/api/discord/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log("LEAVE RESPONSE:", data);
+    })
+    .catch(err => {
+        console.error("LEAVE ERROR:", err);
+    });
+
+    closeDiscordConfirm();
+}
+
+
+/* ================= Pi Spy Status ================= */
+async function updatePiSpyStatus() {
+    try {
+        const res = await fetch("/health/discord", { cache: "no-store" });
+        const data = await res.json();
+
+        const header = document.querySelector(".header-status");
+        const dot = header.querySelector(".status-dot");
+
+        [...header.childNodes].forEach(n => {
+            if (n.nodeType === Node.TEXT_NODE) header.removeChild(n);
+        });
+
+        dot.className = "status-dot " + (data.discord_connected ? "online" : "offline");
+        header.append(" Pi Spy");
+    } catch {}
+}
+
+/* ================= Fetch Discord ================= */
+async function fetchDiscord() {
+    try {
+        const res = await fetch("/api/discord/voice", { cache: "no-store" });
+        discordData = await res.json();
+
+        const guild = Object.keys(discordData)[0];
+        const channels = Object.keys(discordData[guild] || {});
+
+        if (!channels.includes(selectedChannel)) {
+            selectedChannel = channels[0];
+        }
+
+        updateTile();
+        console.log("SELF IN CHANNEL?", selectedChannel, isSelfInSelectedChannel());
+    } catch (e) {
+        console.error("Discord fetch failed", e);
+    }
+}
+
+async function fetchTextChannels() {
+    try {
+        const res = await fetch("/api/discord/text_channels", { cache: "no-store" });
+        textChannels = await res.json();
+
+        if (!textChannels.includes(selectedTextChannel)) {
+            selectedTextChannel = textChannels[0];
+            updateTextTile();
+        }
+    } catch (e) {
+        console.error("Failed to fetch text channels", e);
+    }
+}
+
+function getSelfVoiceState() {
+    if (!discordData) return null;
+
+    const guild = Object.keys(discordData)[0];
+    const channels = discordData[guild] || {};
+
+    for (const channelName in channels) {
+        const member = channels[channelName].find(
+            m => m.name === SELF_NAME
+        );
+        if (member) {
+            return {
+                channel: channelName,
+                streaming: !!member.streaming
+            };
+        }
+    }
+    return null;
+}
+
+/* ================= Tile Update ================= */
+function updateTile() {
+    if (!discordData) return;
+
+    const guild = Object.keys(discordData)[0];
+    const channels = discordData[guild] || {};
+    const members = channels[selectedChannel] || [];
+
+    /* ================= Render key ================= */
+    const renderKey = selectedChannel + members
+        .map(m =>
+            `${m.name}:${m.muted}:${m.deafened}:${m.streaming}:${m.video}:${m.playing}`
+        )
+        .join("|");
+
+    if (renderKey === lastRenderKey) return;
+    lastRenderKey = renderKey;
+
+    /* ================= Voice list ================= */
+    document.getElementById("voice-channel-name").textContent = selectedChannel;
+    document.getElementById("voice-count").textContent = members.length;
+
+    const box = document.getElementById("voice-members");
+    box.innerHTML = "";
+
+    if (!members.length) {
+        box.innerHTML = `<div class="empty-voice">Empty channel</div>`;
+    } else {
+        members.forEach(m => {
+            const row = document.createElement("div");
+            row.className =
+                "discord-member" +
+                (m.muted ? " muted" : "") +
+                (m.name === SELF_NAME ? " self" : "");
+
+            row.innerHTML = `
+                <div class="member-left">
+                    <img class="avatar" src="${m.avatar}">
+                    <span class="name">${m.name}</span>
+                </div>
+                <div class="voice-icons">
+                    ${m.streaming ? `<img src="/static/icons/screen_share.svg" class="voice-icon streaming">` : ``}
+                    ${m.video ? `<img src="/static/icons/video_camera_person.svg" class="voice-icon video">` : ``}
+                    ${m.muted ? `<img src="/static/icons/muted.svg" class="voice-icon muted">` : ``}
+                    ${m.deafened ? `<img src="/static/icons/deafen.svg" class="voice-icon deafened">` : ``}
+                </div>
+            `;
+            box.appendChild(row);
+        });
+    }
+
+    /* ================= Find SELF (used by multiple tiles) ================= */
+    let self = null;
+    let selfChannel = null;
+
+    for (const ch in channels) {
+        const found = channels[ch].find(u => u.name === SELF_NAME);
+        if (found) {
+            self = found;
+            selfChannel = ch;
+            break;
+        }
+    }
+
+    /* ================= Screen Share Tile ================= */
+    const shareTile  = document.getElementById("screenShareTile");
+    const title = document.getElementById("screenShareTitle");
+    const sub   = document.getElementById("screenShareChannel");
+    const icon  = document.getElementById("screenShareIcon");
+    const live  = document.getElementById("screenShareLive");
+
+    if (shareTile && title && sub && icon) {
+        if (!self) {
+            title.textContent = "Start streaming in:";
+            sub.textContent = "—";
+            icon.src = "/static/icons/screen_share.svg";
+            shareTile.classList.remove("streaming");
+            if (live) live.style.display = "none";
+        } else {
+            const isStreaming = self.streaming === true;
+
+            title.textContent = isStreaming
+                ? "Stop streaming in:"
+                : "Start streaming in:";
+
+            sub.textContent = selfChannel;
+
+            icon.src = isStreaming
+                ? "/static/icons/stop_screen_share.svg"
+                : "/static/icons/screen_share.svg";
+
+            shareTile.classList.toggle("streaming", isStreaming);
+            if (live) live.style.display = isStreaming ? "block" : "none";
+        }
+    }
+
+    /* ================= Mute / Deafen Tile ================= */
+    const muteTile   = document.getElementById("muteTile");
+    const muteIcon   = document.getElementById("muteIcon");
+    const deafenIcon = document.getElementById("deafenIcon");
+
+    if (muteTile && muteIcon && deafenIcon) {
+        if (!self) {
+            // Not in voice
+            muteIcon.src   = "/static/icons/mic.svg";
+            deafenIcon.src = "/static/icons/headphones.svg";
+            muteTile.classList.remove("muted", "deafened");
+        } else {
+            // Mute
+            if (self.muted) {
+                muteIcon.src = "/static/icons/muted.svg";
+                muteTile.classList.add("muted");
+            } else {
+                muteIcon.src = "/static/icons/mic.svg";
+                muteTile.classList.remove("muted");
+            }
+
+            // Deafen
+            if (self.deafened) {
+                deafenIcon.src = "/static/icons/deafen.svg";
+                muteTile.classList.add("deafened");
+            } else {
+                deafenIcon.src = "/static/icons/headphones.svg";
+                muteTile.classList.remove("deafened");
+            }
+        }
+    }
+}
+
+/* ================= Picker ================= */
+function openPicker() {
+    if (!discordData) return;
+
+    const list = document.getElementById("discordPickerList");
+    list.innerHTML = "";
+
+    const guild = Object.keys(discordData)[0];
+    const channels = discordData[guild] || {};
+
+    Object.keys(channels).forEach(name => {
+        const members = channels[name] || [];
+
+        const item = document.createElement("div");
+        item.className =
+            "discord-picker-item" +
+            (name === selectedChannel ? " selected" : "");
+
+        item.innerHTML = `
+            <span>${name}</span>
+            ${
+                members.length
+                    ? `<span class="picker-count">
+                           <img src="/static/icons/group.svg">
+                           ${members.length}
+                       </span>`
+                    : ``
+            }
+        `;
+
+        item.addEventListener("click", (ev) => {
+            ev.stopPropagation(); // prevent overlay close
+            selectedChannel = name;
+            lastRenderKey = null;
+            updateTile();
+            closePicker();
+        });
+
+        list.appendChild(item);
+    });
+
+    document.getElementById("discordOverlay").classList.add("show");
+    document.getElementById("discordPicker").classList.add("show");
+}
+
+function closePicker() {
+    document.getElementById("discordOverlay").classList.remove("show");
+    document.getElementById("discordPicker").classList.remove("show");
+}
+
+function openImageViewer(url) {
+    const overlay = document.getElementById("imageViewerOverlay");
+    const img = document.getElementById("imageViewerImg");
+
+    if (!overlay || !img) return;
+
+    img.src = url;
+    overlay.classList.add("show");
+}
+
+function closeImageViewer() {
+    const overlay = document.getElementById("imageViewerOverlay");
+    const img = document.getElementById("imageViewerImg");
+
+    if (!overlay || !img) return;
+
+    overlay.classList.remove("show");
+    img.src = "";
+}
+const overlay = document.getElementById("discordOverlay");
+document.addEventListener("auxclick", e => {
+    if (e.target.closest(".tile")) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+});
+
+/* ================= Toggle ScreenShare ================= */
+
+function toggleScreenShare() {
+    if (!isSelfInAnyVoiceChannel()) {
+        console.warn("Not in any voice channel");
+        return;
+    }
+
+    if (!pcOnline) {
+        console.warn("PC offline");
+        return;
+    }
+
+    fetch("/api/discord/screen_share", {
+        method: "POST"
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log("SCREEN SHARE:", data);
+    })
+    .catch(err => {
+        console.error("Screen share failed", err);
+    });
+}
+
+
+/* ================= Init ================= */
+updatePiSpyStatus();
+fetchDiscord();
+fetchTextChannels();
+updateTextTile();
+updatePCHealth();
+
+setInterval(updatePiSpyStatus, 2000);
+setInterval(fetchDiscord, 2000);
+setInterval(fetchTextMessages, 2000);
+setInterval(updatePCHealth, 2000);
+
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+        closePicker();
+        closeDiscordConfirm();
+    }
+});
+</script>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+<!-- ================= Image Viewer ================= -->
+<div id="imageViewerOverlay" class="image-viewer-overlay" onclick="closeImageViewer()">
+    <img id="imageViewerImg" src="" alt="">
+</div>
+
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Most Played Games</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="page steam-most-played-page programs-page">
+{% set title = "Most Played" %}
+{% include "partials/steam_header.html" %}
+
+<!-- ===== Dashboard ===== -->
+<div class="dashboard">
+    <div class="tile-grid main-grid">
+
+        {% for game in games %}
+        <div class="tile steam-game steam-game-tile tap-pc"
+             data-appid="{{ game.appid }}"
+             data-name="{{ game.name }}"
+             onclick="openConfirm(this)">
+
+            <img
+                src="https://cdn.cloudflare.steamstatic.com/steam/apps/{{ game.appid }}/header.jpg?v={{ game.appid }}"
+                class="steam-art"
+                alt="{{ game.name }}"
+                onerror="this.style.display='none'">
+
+            <div class="label">
+                <div class="game-name">{{ game.name }}</div>
+
+                <small>{{ game.hours }} hrs (total)</small>
+
+                {% set count = friends_playing.get(game.appid, 0) %}
+                {% if count > 0 %}
+                <div class="friends-playing">
+                    {{ count }} friend{{ 's' if count != 1 else '' }} in-game
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="in-game-badge">IN&nbsp;GAME</div>
+        </div>
+        {% endfor %}
+
+        {% for i in range(4 - games|length) %}
+        <div class="tile inactive">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/star.svg') }}"
+                     class="icon-img"
+                     alt="Empty">
+            </div>
+            <div class="label">No Favorite</div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+
+<!-- ===== Confirm Overlay ===== -->
+<div id="confirmOverlay" class="confirm-overlay" onclick="closeConfirm()"></div>
+
+<div id="confirmPanel" class="confirm-panel">
+    <div class="confirm-header">
+        <div class="confirm-title">Launch Game</div>
+        <button class="confirm-close" onclick="closeConfirm()">×</button>
+    </div>
+
+    <div class="confirm-body">
+        <div id="confirmGameName" class="confirm-game">Game Name</div>
+        <div class="confirm-sub">
+            Are you sure you want to launch this game?
+        </div>
+
+        <div class="confirm-actions">
+            <button class="tile" id="confirmLaunchBtn" onclick="confirmLaunch()">▶ Launch</button>
+            <button class="tile" onclick="closeConfirm()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ==================================================
+   Highlight currently playing game (by NAME)
+================================================== */
+function highlightCurrentSteamGame(gameName) {
+    const tiles = document.querySelectorAll(".steam-game-tile");
+
+    tiles.forEach(tile => tile.classList.remove("steam-playing"));
+
+    if (!gameName) return;
+
+    const normalized = gameName.toLowerCase().trim();
+
+    tiles.forEach(tile => {
+        const tileName = (tile.dataset.name || "").toLowerCase().trim();
+        if (tileName === normalized) {
+            tile.classList.add("steam-playing");
+        }
+    });
+}
+
+let pendingAppId = null;
+let pcOnline = false;
+
+/* ===== PC Health (launch only) ===== */
+async function checkPCHealth() {
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+        pcOnline = !!data.online;
+
+        const btn = document.getElementById("confirmLaunchBtn");
+        if (btn) btn.classList.toggle("disabled", !pcOnline);
+    } catch {
+        pcOnline = false;
+        const btn = document.getElementById("confirmLaunchBtn");
+        if (btn) btn.classList.add("disabled");
+    }
+}
+
+/* ===== Confirm ===== */
+function openConfirm(tile) {
+    pendingAppId = tile.dataset.appid;
+    document.getElementById("confirmGameName").textContent =
+        tile.dataset.name || "Unknown Game";
+
+    document.getElementById("confirmOverlay").classList.add("show");
+    document.getElementById("confirmPanel").classList.add("show");
+}
+
+function confirmLaunch() {
+    if (!pendingAppId || !pcOnline) return;
+    fetch(`/open_steam/${pendingAppId}`);
+    closeConfirm();
+}
+
+function closeConfirm() {
+    pendingAppId = null;
+    document.getElementById("confirmOverlay").classList.remove("show");
+    document.getElementById("confirmPanel").classList.remove("show");
+}
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeConfirm();
+});
+
+checkPCHealth();
+setInterval(checkPCHealth, 5000);
+</script>
+
+{% include "partials/steam_status_script.html" %}
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+</body>
+</html>

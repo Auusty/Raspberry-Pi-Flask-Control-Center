@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kiosk Control Center">
+  <!-- Uses currentColor so you can tint via CSS -->
+  <defs>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="b"></feGaussianBlur>
+      <feColorMatrix in="b" type="matrix" values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 0.35 0" result="g"></feColorMatrix>
+      <feMerge>
+        <feMergeNode in="g"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background tile -->
+  <rect x="56" y="56" width="400" height="400" rx="96" fill="currentColor" opacity="0.14"></rect>
+  <rect x="76" y="76" width="360" height="360" rx="88" fill="currentColor" opacity="0.10"></rect>
+
+  <!-- Main outline -->
+  <rect x="92" y="92" width="328" height="328" rx="78" fill="none" stroke="currentColor" stroke-width="18" opacity="0.85"></rect>
+
+  <!-- Dashboard grid (2x2) -->
+  <g fill="currentColor" filter="url(#softGlow)" opacity="0.95">
+    <rect x="144" y="168" width="104" height="104" rx="26"></rect>
+    <rect x="264" y="168" width="104" height="104" rx="26"></rect>
+    <rect x="144" y="288" width="104" height="104" rx="26"></rect>
+    <rect x="264" y="288" width="104" height="104" rx="26"></rect>
+  </g>
+
+  <!-- “Pi chip” badge -->
+  <g transform="translate(0,0)">
+    <rect x="324" y="116" width="88" height="52" rx="18" fill="currentColor" opacity="0.22"></rect>
+    <rect x="330" y="122" width="76" height="40" rx="14" fill="none" stroke="currentColor" stroke-width="6" opacity="0.75"></rect>
+    <!-- pins -->
+    <g stroke="currentColor" stroke-width="6" opacity="0.6">
+      <line x1="336" y1="110" x2="336" y2="122"></line>
+      <line x1="354" y1="110" x2="354" y2="122"></line>
+      <line x1="372" y1="110" x2="372" y2="122"></line>
+      <line x1="390" y1="110" x2="390" y2="122"></line>
+      <line x1="336" y1="162" x2="336" y2="174"></line>
+      <line x1="354" y1="162" x2="354" y2="174"></line>
+      <line x1="372" y1="162" x2="372" y2="174"></line>
+      <line x1="390" y1="162" x2="390" y2="174"></line>
+    </g>
+    <!-- PI text -->
+    <text x="368" y="152" text-anchor="middle" font-size="26" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-weight="800" fill="currentColor" opacity="0.85">Pi</text>
+  </g>
+</svg>

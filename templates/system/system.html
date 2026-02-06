@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>System Panel</title>
+    {% include "partials/head.html" %}
+</head>
+
+
+<body class="system-page page">
+
+{# ================= Header config ================= #}
+{% set title = "System Panel" %}
+{% set status_text = "Online" %}
+{% set status_class = "" %}
+{% set back_url = url_for('index') %}
+{% set back_icon = url_for('static', filename='icons/back.svg') %}
+{% set show_time = true %}
+
+{% include "partials/header.html" %}
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid">
+
+        <!-- Reboot Pi -->
+        <form action="{{ url_for('system.reboot_pi') }}" method="post" id="reboot-form">
+            <button type="submit" class="tile reboot-pi tap-system">
+                <div class="icon">
+                    <img src="{{ url_for('static', filename='icons/power.svg') }}"
+                         class="icon-img"
+                         alt="Reboot Pi">
+                </div>
+                <div class="label">
+                    Reboot Pi<br>
+                    <small>{{ last_boot }}</small>
+                </div>
+            </button>
+        </form>
+
+        <!-- System Stats -->
+        <a href="{{ url_for('system.system_stats') }}" class="tile system-stats tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/system.svg') }}"
+                     class="icon-img"
+                     alt="System Stats">
+                </div>
+                <div class="label">System Stats</div>
+        </a>
+
+        <!-- Restart Kiosk -->
+        <form id="restart-chromium-form"
+              action="{{ url_for('system.restart_chromium') }}"
+              method="post">
+            <button type="submit" class="tile restart-chromium tap-system">
+                <div class="icon">
+                    <img src="{{ url_for('static', filename='icons/restart.svg') }}"
+                         class="icon-img"
+                         alt="Restart Kiosk">
+                </div>
+                <div class="label">Restart Kiosk</div>
+            </button>
+        </form>
+
+        <!-- Exit Kiosk -->
+        <form id="exit-kiosk-form"
+              action="{{ url_for('system.exit_kiosk') }}"
+              method="post">
+            <button type="submit" class="tile exit-kiosk tap-system">
+                <div class="icon">
+                    <img src="{{ url_for('static', filename='icons/back.svg') }}"
+                         class="icon-img"
+                         alt="Exit Kiosk">
+                </div>
+                <div class="label">Exit Kiosk</div>
+            </button>
+        </form>
+
+    </div>
+</div>
+
+<script>
+/* ==================================================
+   Confirmation dialogs
+================================================== */
+document.getElementById('exit-kiosk-form').addEventListener('submit', function(e) {
+    if (!confirm("Are you sure you want to exit kiosk mode?")) e.preventDefault();
+});
+
+document.getElementById('restart-chromium-form').addEventListener('submit', function(e) {
+    if (!confirm("Restart Chromium now?")) e.preventDefault();
+});
+
+document.getElementById('reboot-form').addEventListener('submit', function(e) {
+    if (!confirm("Reboot the Raspberry Pi now?")) {
+        e.preventDefault();
+    }
+});
+</script>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+</body>
+</html>

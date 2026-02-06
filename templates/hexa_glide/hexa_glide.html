@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>{{ device_name }}</title>
+  {% include "partials/head.html" %}
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/>
+  <style>
+    .icon-img { transition: filter .25s ease, opacity .25s ease, transform .25s ease; }
+
+    .power-on {
+      filter:
+        drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 80%, transparent))
+        drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 60%, transparent));
+      transform: scale(1.05);
+    }
+    /* Power button states */
+    .power-btn {
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color .25s ease, box-shadow .25s ease, transform .15s ease;
+    }
+
+    /* OFF = red */
+    .power-btn.on {
+      background: #e74c3c;
+      box-shadow:
+        0 0 8px rgba(231, 76, 60, 0.6),
+        inset 0 0 0 1px rgba(255,255,255,.15);
+    }
+
+    /* ON = green */
+    .power-btn.off {
+      background: #27ae60;
+      box-shadow:
+        0 0 10px rgba(39, 174, 96, 0.8),
+        0 0 18px rgba(39, 174, 96, 0.5),
+        inset 0 0 0 1px rgba(255,255,255,.2);
+    }
+
+    .power-btn:active {
+      transform: scale(0.97);
+    }
+    .color-tile-outline {
+      outline: 2px solid transparent;
+      outline-offset: -2px;
+      border-radius: 14px;
+      transition: outline-color .25s ease, opacity .25s ease;
+    }
+
+    .scene-mode-muted { opacity: .78; filter: grayscale(.35); }
+
+    .scene-active-outline {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+      border-radius: 14px;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .power-off-muted { opacity: .55; filter: grayscale(.45); }
+
+    /* tiny debug toast (only shows on errors) */
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.75);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      max-width: 92vw;
+      z-index: 9999;
+      display: none;
+      backdrop-filter: blur(6px);
+    }
+  </style>
+</head>
+
+<body class="lights-page page">
+
+<div class="header">
+
+  <div class="header-left">
+    <a href="{{ url_for('index') }}" class="header-btn back-btn">
+      <img src="{{ url_for('static', filename='icons/back.svg') }}"
+           class="icon-img"
+           alt="Back">
+    </a>
+
+    <span id="header-time" class="header-time">--:--</span>
+  </div>
+
+  <h1 class="header-title">{{ device_name }}</h1>
+
+  <div class="header-status" style="display:flex; align-items:center; gap:10px;">
+
+    <!-- Surface -->
+    <button
+      class="header-btn surface-btn"
+      onclick="cycleSurface()"
+      title="Change surface"
+    >
+      <img src="{{ url_for('static', filename='icons/layers.svg') }}"
+           class="icon-img"
+           alt="Surface">
+    </button>
+
+    <!-- Theme -->
+    <button
+      class="header-btn theme-btn"
+      onclick="cycleTheme()"
+      title="Change theme"
+    >
+      <img src="{{ url_for('static', filename='icons/palette.svg') }}"
+           class="icon-img"
+           alt="Theme">
+    </button>
+
+    <!-- Power status (unchanged logic) -->
+    <span
+      id="headerStatusDot"
+      class="status-dot {{ 'online' if power_state == 'on' else 'offline' }}">
+    </span>
+    <span>Hexa Glide</span>
+
+  </div>
+
+</div>
+
+
+<div class="dashboard">
+  <div class="tile-grid">
+
+    <!-- Power -->
+    <div class="tile lights-tile tap-lights">
+      <span class="tile-indicator lights"></span>
+      <div class="icon">
+        <img id="powerIcon" src="{{ url_for('static', filename='icons/power.svg') }}" class="icon-img" alt="Power">
+      </div>
+      <button id="powerBtn" class="power-btn">Power</button>
+    </div>
+
+    <!-- Brightness -->
+    <div class="tile lights-tile tap-lights">
+        <div class="icon">
+            <img id="brightnessIcon"
+                src="{{ url_for('static', filename='icons/brightness.svg') }}"
+                class="icon-img"
+                alt="Brightness">
+        </div>
+
+        <div class="brightness-row">
+        <input
+             id="brightnessSlider"
+            type="range"
+            min="1"
+             max="100"
+             value="{{ brightness }}"
+             oninput="setBrightness(this.value)"
+            >
+            <span id="brightnessOutput">{{ brightness }}%</span>
+        </div>
+    </div>
+
+
+    <!-- Color -->
+
+    <div class="tile lights-tile color-tile-outline tap-lights" id="colorTile">
+      <div class="icon">
+        <img id="colorIcon"
+            src="{{ url_for('static', filename='icons/palette.svg') }}"
+            class="icon-img"
+            alt="Color">
+      </div>
+
+      <button id="pickr-button"
+              class="color-button"
+              aria-label="Pick Color"></button>
+
+      <!-- Kelvin slider (ADD THIS PART) -->
+      <div class="kelvin-control">
+        <div class="kelvin-header">
+          <span>Color Temperature</span>
+          <span id="kelvinValue">6500K</span>
+        </div>
+
+        <input
+          type="range"
+          min="2000"
+          max="9000"
+          step="100"
+          value="6500"
+          id="kelvinSlider"
+          oninput="previewKelvin(this.value)"
+          onchange="setKelvin(this.value)"
+        />
+      </div>
+    </div>
+
+    <!-- Scenes -->
+    <a href="{{ url_for('hexa.hexa_glide_scenes') }}" class="tile lights-tile tap-nav" id="scenesTile">
+      <div class="icon">
+        <img src="{{ url_for('static', filename='icons/scenes.svg') }}" class="icon-img" alt="Scenes">
+      </div>
+      <div class="label" id="scenesLabel">Scenes</div>
+    </a>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+
+<script>
+  // -----------------------------
+  // State from server render
+  // -----------------------------
+  let currentPower = "{{ power_state }}" === "on";
+  let currentMode  = "{{ mode|default('color') }}";
+  let activeScene  = {{ active_scene|default("null")|tojson }};
+  let lastColorCss = "rgb({{ current_color.r }}, {{ current_color.g }}, {{ current_color.b }})";
+
+  let suppressPollUntil = 0;
+  let isAdjustingBrightness = false;
+
+  let brightnessDebounceTimer = null;
+  let pendingBrightness = null;
+  let pickrInitializing = true;
+
+  const powerBtn = document.getElementById("powerBtn");
+  const powerIcon = document.getElementById("powerIcon");
+  const brightnessSlider = document.getElementById("brightnessSlider");
+  const brightnessOutput = document.getElementById("brightnessOutput");
+  const brightnessIcon = document.getElementById("brightnessIcon");
+  const colorIcon = document.getElementById("colorIcon");
+  const colorTile = document.getElementById("colorTile");
+  const scenesTile = document.getElementById("scenesTile");
+  const scenesLabel = document.getElementById("scenesLabel");
+  const colorButton = document.getElementById("pickr-button");
+  const headerDot = document.getElementById("headerStatusDot");
+  const toast = document.getElementById("toast");
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.style.display = "block";
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.style.display = "none", 3200);
+  }
+
+  async function api(url, opts) {
+    try {
+      const r = await fetch(url, opts);
+      const text = await r.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch {}
+      if (!r.ok) {
+        showToast(`${url} → ${r.status} ${r.statusText}`);
+        console.warn("API error:", url, r.status, text);
+      }
+      return data ?? {};
+    } catch (e) {
+      showToast(`${url} → network error`);
+      console.error("API network error:", url, e);
+      return {};
+    }
+  }
+
+  function updateScenesLabel() {
+    if (currentPower && currentMode === "scene" && activeScene?.name) {
+      scenesLabel.innerHTML =
+        `<div style="font-size:18px;opacity:.7;">Current scene:</div><div>${activeScene.name}</div>`;
+      scenesTile.classList.add("scene-active-outline");
+      colorTile.classList.add("scene-mode-muted");
+    } else {
+      scenesLabel.textContent = "Scenes";
+      scenesTile.classList.remove("scene-active-outline");
+      colorTile.classList.remove("scene-mode-muted");
+    }
+  }
+
+ function updatePowerUI() {
+  powerBtn.textContent = currentPower ? "Power OFF" : "Power ON";
+
+  powerBtn.classList.toggle("on", currentPower);
+  powerBtn.classList.toggle("off", !currentPower);
+
+  powerIcon.classList.toggle("power-on", currentPower);
+
+  headerDot.classList.toggle("online", currentPower);
+  headerDot.classList.toggle("offline", !currentPower);
+
+  colorTile.classList.toggle("power-off-muted", !currentPower);
+  scenesTile.classList.toggle("power-off-muted", !currentPower);
+
+  if (currentPower && currentMode === "color") {
+    colorIcon.style.filter = `drop-shadow(0 0 8px ${lastColorCss})`;
+    colorTile.style.outlineColor = lastColorCss;
+  } else {
+    colorIcon.style.filter = "none";
+    colorTile.style.outlineColor = "transparent";
+  }
+  colorButton.style.filter =
+    currentMode === "kelvin"
+      ? "saturate(0.85)"
+      : "none";
+
+}
+
+
+  function forceColorModeLocal() {
+    currentPower = true;
+    currentMode = "color";
+    activeScene = null;
+  }
+
+  // -----------------------------
+  // Power
+  // -----------------------------
+  powerBtn.onclick = async () => {
+    suppressPollUntil = Date.now() + 2500;
+
+    const d = await api("/api/power", { method: "POST" });
+    if (d && typeof d.power === "string") {
+      currentPower = (d.power === "on");
+    } else {
+      // If backend didn't return power, just flip locally
+      currentPower = !currentPower;
+    }
+
+    if (!currentPower) {
+      currentMode = "color";
+      activeScene = null;
+    }
+
+    updatePowerUI();
+    updateScenesLabel();
+
+  };
+
+  // -----------------------------
+  // Brightness
+  // -----------------------------
+
+  function updateBrightnessSliderUI(value) {
+  const pct = Math.max(1, Math.min(100, value));
+
+  brightnessSlider.style.background = `
+    linear-gradient(
+      to right,
+      var(--accent) 0%,
+      var(--accent) ${pct}%,
+      rgba(255,255,255,0.18) ${pct}%,
+      rgba(255,255,255,0.18) 100%
+    )
+  `;
+}
+  function setBrightness(v) {
+  v = parseInt(v, 10);
+  if (Number.isNaN(v)) return;
+
+  // UI updates immediately
+  brightnessSlider.value = v;
+  brightnessOutput.textContent = v + "%";
+  brightnessIcon.style.opacity = Math.max(.25, v / 100);
+  updateBrightnessSliderUI(v);
+
+  currentPower = true;
+  updatePowerUI();
+  updateScenesLabel();
+
+  suppressPollUntil = Date.now() + 4000;
+
+  // debounce backend calls
+  pendingBrightness = v;
+  clearTimeout(brightnessDebounceTimer);
+
+  brightnessDebounceTimer = setTimeout(() => {
+    isAdjustingBrightness = true;
+
+    api("/api/brightness", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brightness: pendingBrightness })
+    }).finally(() => {
+      isAdjustingBrightness = false;
+    });
+
+  }, 120); // ⬅️ critical number
+}
+
+  // -----------------------------
+// Pickr (THROTTLED + SAFE)
+// -----------------------------
+
+const pickr = Pickr.create({
+  el: "#pickr-button",
+  useAsButton: true,
+  theme: "monolith",
+  default: lastColorCss,
+  components: {
+    preview: false,
+    opacity: false,
+    hue: true,
+    interaction: { save: true, clear: false }
+  }
+});
+
+// visually set button color WITHOUT triggering change
+colorButton.style.background = lastColorCss;
+
+// allow Pickr to fully mount before enabling change handling
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    pickrInitializing = false;
+  });
+});
+
+
+colorButton.style.background = lastColorCss;
+
+// throttle state
+let lastColorSend = 0;
+let pendingColor = null;
+
+pickr.on("change", (color) => {
+  if (pickrInitializing) return; // Ignore initialization phase
+
+  const [r, g, b] = color.toRGBA();
+  const rgb = { r: r | 0, g: g | 0, b: b | 0 };
+
+  lastColorCss = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+  colorButton.style.background = lastColorCss;
+
+  forceColorModeLocal();
+  updatePowerUI();
+  updateScenesLabel();
+
+  pendingColor = rgb;
+  suppressPollUntil = Date.now() + 4000;
+
+  const now = Date.now();
+  if (now - lastColorSend < 120) return;
+
+  lastColorSend = now;
+
+  api("/api/color", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ color: pendingColor })
+  }).catch(() => {});
+});
+
+
+pickr.on("save", () => {
+  if (!pendingColor) return;
+
+  // final guaranteed send on save
+  api("/api/color", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ color: pendingColor })
+  }).catch(() => {});
+
+  pickr.hide();
+  pendingColor = null;
+});
+
+let statusLockUntil = 0;
+
+function lockStatus(ms = 2000) {
+  statusLockUntil = Date.now() + ms;
+}
+
+  // -----------------------------
+  // Poll
+  // -----------------------------
+  async function poll() {
+    if (isAdjustingBrightness) return;
+    if (Date.now() < suppressPollUntil) return;
+
+    const d = await api("/api/hexa/status", { method: "GET" });
+    if (!d || d.success === false) return;
+
+    currentPower = (d.power === "on");
+    currentMode = d.mode || "color";
+    activeScene = d.active_scene || null;
+
+    if (typeof d.brightness === "number") {
+      brightnessSlider.value = d.brightness;
+      brightnessOutput.textContent = d.brightness + "%";
+      brightnessIcon.style.opacity = Math.max(.25, d.brightness / 100);
+      updateBrightnessSliderUI(d.brightness);
+    }
+
+    if (d.color && typeof d.color.r === "number") {
+      lastColorCss = `rgb(${d.color.r},${d.color.g},${d.color.b})`;
+      colorButton.style.background = lastColorCss;
+    }
+
+    if (typeof d.kelvin === "number") {
+      const slider = document.getElementById("kelvinSlider");
+      const label = document.getElementById("kelvinValue");
+
+      if (slider && label) {
+        slider.value = d.kelvin;
+        label.textContent = d.kelvin + "K";
+
+        slider.style.setProperty("--thumb-color", kelvinToColor(d.kelvin));
+
+        // update color square too
+        const rgb = kelvinToRGB(d.kelvin);
+        lastColorCss = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+        colorButton.style.background = lastColorCss;
+      }
+    }
+
+    updatePowerUI();
+    updateScenesLabel();
+  }
+
+  // init
+  updatePowerUI();
+  updateScenesLabel();
+  updateBrightnessSliderUI(brightnessSlider.value);
+  setTimeout(() => {
+  poll();
+  setInterval(poll, 2000);
+}, 1200);
+
+function kelvinToColor(k) {
+  if (k < 3500) return "#ff9b4a";   // warm
+  if (k < 5500) return "#ffffff";   // neutral
+  return "#9fd3ff";                 // cool
+}
+
+function kelvinToRGB(kelvin) {
+  let temp = kelvin / 100;
+  let r, g, b;
+
+  if (temp <= 66) {
+    r = 255;
+    g = 99.47 * Math.log(temp) - 161.12;
+    b = temp <= 19 ? 0 : 138.52 * Math.log(temp - 10) - 305.04;
+  } else {
+    r = 329.7 * Math.pow(temp - 60, -0.133);
+    g = 288.12 * Math.pow(temp - 60, -0.0755);
+    b = 255;
+  }
+
+  return {
+    r: Math.min(255, Math.max(0, Math.round(r))),
+    g: Math.min(255, Math.max(0, Math.round(g))),
+    b: Math.min(255, Math.max(0, Math.round(b))),
+  };
+}
+
+function previewKelvin(value) {
+  value = parseInt(value, 10);
+  if (Number.isNaN(value)) return;
+
+  const slider = document.getElementById("kelvinSlider");
+  const label = document.getElementById("kelvinValue");
+
+  label.textContent = value + "K";
+
+  // thumb color
+  slider.style.setProperty("--thumb-color", kelvinToColor(value));
+
+  // color square preview
+  const rgb = kelvinToRGB(value);
+  lastColorCss = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+  colorButton.style.background = lastColorCss;
+}
+
+
+function setKelvin(value) {
+  value = parseInt(value, 10);
+  if (Number.isNaN(value)) return;
+
+  // local UI intent
+  currentPower = true;
+  currentMode = "kelvin";
+  activeScene = null;
+
+  suppressPollUntil = Date.now() + 5000;
+
+  api("/api/kelvin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kelvin: value })
+  });
+
+  updatePowerUI();
+  updateScenesLabel();
+}
+
+</script>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Weather</title>
+    {% include "partials/head.html" %}
+
+    <style>
+        /* ===============================
+           Top weather layout
+        =============================== */
+
+        .current {
+            padding: 18px;
+        }
+
+        .current-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .mini {
+            text-align: center;
+            opacity: 0.85;
+        }
+
+        .mini-label {
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .mini img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .mini-temp {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .main-weather {
+            text-align: center;
+        }
+
+        .main-weather img {
+            width: 64px;
+            height: 64px;
+        }
+
+        .temp {
+            font-size: 3rem;
+            font-weight: 800;
+        }
+
+        .desc {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body class="page weather-page">
+
+{% set title = "Weather" %}
+{% set status_text = "Fortuna, CA" %}
+{% set back_url = url_for('index') %}
+{% set back_icon = url_for('static', filename='icons/back.svg') %}
+{% set show_time = true %}
+{% include "partials/header.html" %}
+
+<div class="dashboard weather-dashboard">
+
+    <!-- ⬇️ fade-in added + id -->
+    <div class="current tile fade-in" id="current-weather">
+
+        <!-- ===== TOP ROW ===== -->
+        <div class="current-row">
+
+            <div class="mini">
+                <div class="mini-label">Today</div>
+                <img id="today-icon" alt="">
+                <div class="mini-temp" id="today-temp">--° / --°</div>
+            </div>
+
+            <div class="main-weather">
+                <img id="current-icon" alt="">
+                <div class="main-temp" id="current-temp">--°</div>
+                <div class="desc" id="current-desc">--</div>
+            </div>
+
+            <div class="mini">
+                <div class="mini-label">Tomorrow</div>
+                <img id="tomorrow-icon" alt="">
+                <div class="mini-temp" id="tomorrow-temp">--° / --°</div>
+            </div>
+
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <span id="feels">--°</span>
+                <label>Feels Like</label>
+            </div>
+            <div class="stat">
+                <span id="wind">-- mph</span>
+                <label>Wind</label>
+            </div>
+            <div class="stat">
+                <span id="humidity">--%</span>
+                <label>Humidity</label>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="section-title">Hourly</div>
+
+    <!-- ⬇️ fade-in wrapper + id -->
+    <div class="hourly fade-in" id="hourly-wrap">
+        <div class="hourly-inner" id="hourly"></div>
+    </div>
+
+    <div class="section-title">5-Day Forecast</div>
+
+    <!-- ⬇️ fade-in added -->
+    <div class="daily fade-in" id="daily"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+<script>
+function hourLabel(ts) {
+    return new Date(ts * 1000).toLocaleTimeString([], { hour: 'numeric' });
+}
+function dayLabel(ts) {
+    return new Date(ts * 1000).toLocaleDateString([], { weekday: 'short' });
+}
+function iconToCondition(icon) {
+    if (icon.startsWith("01")) return "Clear";
+    if (icon.startsWith("02") || icon.startsWith("03")) return "Cloudy";
+    if (icon.startsWith("04")) return "Overcast";
+    if (icon.startsWith("09") || icon.startsWith("10")) return "Rain";
+    if (icon.startsWith("11")) return "Storm";
+    if (icon.startsWith("13")) return "Snow";
+    return "Weather";
+}
+
+const toast = document.getElementById("toast");
+let toastTimer;
+function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+/* ⬇️ helper added */
+function revealOnce(id) {
+    const el = document.getElementById(id);
+    if (!el || el.classList.contains("show")) return;
+    el.getBoundingClientRect();
+    el.classList.add("show");
+}
+
+fetch("/api/weather/full", { cache: "no-store" })
+.then(r => r.json())
+.then(w => {
+    document.getElementById("current-temp").textContent = `${w.current.temp}°`;
+    document.getElementById("current-desc").textContent = w.current.description;
+    document.getElementById("feels").textContent = `${w.current.feels_like}°`;
+    document.getElementById("wind").textContent = `${w.current.wind} mph`;
+    document.getElementById("humidity").textContent = `${w.current.humidity}%`;
+    document.getElementById("current-icon").src =
+        `https://openweathermap.org/img/wn/${w.current.icon}@2x.png`;
+
+    document.getElementById("today-icon").src =
+        `https://openweathermap.org/img/wn/${w.daily[0].icon}@2x.png`;
+    document.getElementById("today-temp").textContent =
+        `${w.daily[0].max}° / ${w.daily[0].min}°`;
+
+    document.getElementById("tomorrow-icon").src =
+        `https://openweathermap.org/img/wn/${w.daily[1].icon}@2x.png`;
+    document.getElementById("tomorrow-temp").textContent =
+        `${w.daily[1].max}° / ${w.daily[1].min}°`;
+
+    const hourlyEl = document.getElementById("hourly");
+    hourlyEl.innerHTML = "";
+    w.hourly.forEach(h => {
+        const el = document.createElement("div");
+        el.className = "hour tile";
+        el.innerHTML = `
+            <div>${hourLabel(h.dt)}</div>
+            <img src="https://openweathermap.org/img/wn/${h.icon}.png">
+            <div class="temp">${h.temp}°</div>
+        `;
+        el.onclick = () =>
+            showToast(`${hourLabel(h.dt)} • ${h.temp}° • ${iconToCondition(h.icon)}`);
+        hourlyEl.appendChild(el);
+    });
+
+    revealOnce("current-weather");
+    revealOnce("hourly-wrap");
+
+    const dailyEl = document.getElementById("daily");
+    dailyEl.innerHTML = "";
+    w.daily.forEach(d => {
+        const avg = Math.round((d.max + d.min) / 2);
+        const el = document.createElement("div");
+        el.className = "day tile";
+        el.innerHTML = `
+            <div>${dayLabel(d.dt)}</div>
+            <img src="https://openweathermap.org/img/wn/${d.icon}.png">
+            <div>${d.max}° / ${d.min}°</div>
+        `;
+        el.onclick = () =>
+            showToast(`${dayLabel(d.dt)} • Avg ${avg}° • ${iconToCondition(d.icon)}`);
+        dailyEl.appendChild(el);
+    });
+
+    revealOnce("daily");
+});
+</script>
+
+</body>
+</html>

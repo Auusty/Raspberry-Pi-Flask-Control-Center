@@ -1,0 +1,3965 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* =========================
+   Root Variables
+========================= */
+:root {
+
+    --bg: #141221;
+    --bg-gradient:
+        radial-gradient(
+            140% 90% at 50% -30%,
+            rgba(255,255,255,0.08),
+            transparent 65%
+        );
+    --bg-gradient-size: 200% 200%;
+    --bg-gradient-speed: 18s;
+
+    --panel: #221f36;
+    --tile: #221f36;
+    --tile-gradient:
+        linear-gradient(
+            140deg,
+            rgba(255,255,255,0.06),
+            rgba(255,255,255,0.02),
+            rgba(255,255,255,0.06)
+            );
+
+    --tile-gradient-size: 200% 200%;
+    --tile-gradient-opacity: 0.6;
+    --tile-gradient-speed: 90s;
+
+    --text: #ffffff;
+    --muted: #9a93b4;
+
+    --accent: #4caf50;
+
+    --power-on: #27ae60;
+    --power-off: #e74c3c;
+
+    --tile-gloss: 0; /* 0 = off, 1 = on */
+    --tile-gloss-strength: 0.35;
+    --tile-gloss-radius: 18px;
+    --tile-blur: 0;
+    --tile-softness: 0;
+    --tile-hardness: 0;
+    --tile-glow: 0;
+
+    --surface-gloss: var(--tile-gloss);
+    --surface-blur: var(--tile-blur);
+    --surface-softness: var(--tile-softness);
+    --surface-hardness: var(--tile-hardness);
+    --surface-glow: var(--tile-glow);
+
+    --page-in: 100ms;
+    --page-out: 90ms;
+
+    --fade-fast: 120ms;
+    --fade-medium: 160ms;
+    --fade-slow: 220ms;
+
+    --motion-ease: ease-out;
+    --motion-ease-soft: cubic-bezier(.25,.8,.25,1);
+}
+
+/* =========================
+   Global
+========================= */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+                 "Segoe UI", Roboto, Arial, sans-serif;
+
+    background:
+        var(--bg-gradient, none),
+        var(--bg);
+
+    background-size:
+        var(--bg-gradient-size),
+        auto;
+
+    animation:
+        bg-drift var(--bg-gradient-speed) linear infinite;
+
+    transition:
+        background var(--fade-medium) var(--motion-ease);
+
+    color: var(--text);
+    overflow-x: hidden;
+}
+
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* =========================
+   Disable swipe navigation
+   for entire app
+========================= */
+
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* =========================
+   Page Transition System
+========================= */
+.page {
+    min-height: 100vh;
+    animation: pageFadeIn var(--page-in) var(--motion-ease);
+    will-change: opacity, transform;
+}
+
+.page.exiting {
+    animation: pageFadeOut var(--page-out) ease-in forwards;
+}
+
+@keyframes pageFadeIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 4px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes pageFadeOut {
+    from {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        opacity: 0;
+        transform: translate3d(0, -4px, 0);
+    }
+}
+
+/* =========================
+   Page Transition Fixes
+========================= */
+
+html, body {
+    overflow: hidden;
+}
+
+/* =========================
+   Async Data Fade-In
+========================= */
+
+.fade-in {
+    opacity: 0;
+    transform: translateY(3px);
+    transition:
+        opacity var(--fade-fast) var(--motion-ease),
+        transform var(--fade-fast) var(--motion-ease);
+}
+
+.fade-in.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+/* =========================
+   BG Drift
+========================= */
+@keyframes bg-drift {
+  0% {
+    background-position:
+      50% 0%,      /* gradient layer */
+      center;      /* solid bg layer */
+  }
+  50% {
+    background-position:
+      50% 100%,
+      center;
+  }
+  100% {
+    background-position:
+      50% 0%,
+      center;
+  }
+}
+
+@keyframes tile-drift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ===============================
+   System Notification (Icon Badge)
+=============================== */
+
+.notify-panel {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+
+    /* Hidden state */
+    transform: translateX(-50%) translateY(-140%) scale(0.96);
+    opacity: 0;
+
+    width: calc(100vw - 24px);
+    max-width: 760px;
+
+    background-color: var(--tile);
+    border-radius: 18px;
+
+    padding: 18px 18px 16px 64px;
+
+    box-shadow:
+        0 18px 40px rgba(0,0,0,0.75),
+        inset 0 0 0 1px rgba(255,255,255,0.08);
+
+    backdrop-filter: none;
+
+    z-index: 99999;
+    cursor: pointer;
+
+    /* Only opacity transitions */
+    transition: opacity 0.25s ease;
+}
+
+/* ===== Visible ===== */
+
+.notify-panel.show {
+    animation: notify-pop 420ms cubic-bezier(.22,.61,.36,1);
+    animation-fill-mode: both; /* lock final frame */
+    opacity: 1;
+}
+
+/* ===== Hidden template ===== */
+
+.notify-panel.hidden {
+    display: none;
+}
+
+/* ===============================
+   Floating badge
+=============================== */
+
+.notify-badge {
+    position: absolute;
+    top: 50%;
+    left: 18px;
+    transform: translateY(-50%);
+
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+
+    background: var(--tile);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow:
+        0 6px 16px rgba(0,0,0,0.6),
+        inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+
+/* Avatar / icon */
+
+.notify-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Accent halo */
+
+.notify-badge::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    pointer-events: none;
+
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
+        0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
+
+    opacity: 0.35;
+}
+
+/* ===============================
+   Content
+=============================== */
+
+.notify-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notify-title {
+    font-weight: 800;
+    font-size: 0.95em;
+    opacity: 0.95;
+}
+
+.notify-message {
+    font-size: 0.95em;
+    line-height: 1.35;
+    opacity: 0.85;
+}
+
+/* Tap feedback */
+
+.notify-panel:active {
+    transform: translateX(-50%) translateY(0) scale(0.985);
+}
+
+/* ===============================
+   Entry animation
+=============================== */
+
+@keyframes notify-pop {
+    0% {
+        transform: translateX(-50%) translateY(-10px) scale(0.96);
+        opacity: 0;
+    }
+
+    60% {
+        transform: translateX(-50%) translateY(2px) scale(1.02);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(-50%) translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ===============================
+   Notification stacking
+=============================== */
+
+.notify-panel.stack-0 { top: 14px; }
+.notify-panel.stack-1 { top: 68px; }
+.notify-panel.stack-2 { top: 122px; }
+
+.notify-panel.stack-1 { opacity: 0.96; }
+.notify-panel.stack-2 { opacity: 0.92; }
+
+
+/* =========================
+   Header (Surface Container)
+========================= */
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    height: 64px;
+    padding: 0 20px;
+
+    /* ALWAYS-visible base */
+    background-color: var(--panel);
+
+    /* Surface overlay */
+    background-image:
+        linear-gradient(
+            180deg,
+            rgba(255,255,255, calc(var(--surface-gloss) * 0.35)),
+            rgba(0,0,0, calc(var(--surface-hardness) * 0.25))
+        );
+
+    backdrop-filter:
+        blur(calc(var(--surface-blur) * 1px))
+        saturate(calc(1 + var(--surface-softness) * 0.25));
+
+    border-bottom:
+        1px solid rgba(
+            255,255,255,
+            calc(0.06 + var(--surface-hardness) * 0.1)
+        );
+
+    box-shadow:
+        0 8px 20px rgba(0,0,0,0.45),
+        inset 0 0 0
+            calc(1px + var(--surface-hardness) * 1px)
+            rgba(255,255,255,0.06),
+        0 0
+            calc(var(--surface-glow) * 18px)
+            color-mix(in srgb, var(--accent), transparent 70%);
+    
+    border-radius: 0 0 18px 18px;
+    overflow: hidden;
+}
+
+
+
+/* =========================
+   Header Layout
+========================= */
+
+.header-left,
+.header-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.header-status {
+    justify-content: flex-end;
+    font-size: 0.9rem;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.header-title {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+
+    font-size: clamp(1.1rem, 3.5vw, 1.8rem);
+    font-weight: 700;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* =========================
+   Header Buttons (Mini Surfaces)
+========================= */
+
+.header-btn {
+    padding: 8px 12px;
+    border-radius: 12px;
+
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(
+                in srgb,
+                var(--tile) calc(100% - var(--surface-gloss) * 25%),
+                #ffffff calc(var(--surface-gloss) * 25%)
+            ),
+            var(--tile)
+        );
+
+    backdrop-filter:
+        blur(calc(var(--surface-blur) * 0.6px));
+
+    box-shadow:
+        /* raised button */
+        0 6px 14px rgba(0,0,0,0.45),
+
+        /* inner bevel */
+        inset 0 0 0
+            calc(1px + var(--surface-hardness) * 1px)
+            rgba(255,255,255,0.08);
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.header-btn:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow:
+        0 3px 8px rgba(0,0,0,0.45),
+        inset 0 0 0
+            calc(1px + var(--surface-hardness) * 1px)
+            rgba(255,255,255,0.06);
+}
+
+.back-btn {
+    font-size: 1.3em;
+}
+
+
+/* =========================
+   Status Dot
+========================= */
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--power-on);
+
+    box-shadow:
+        0 0 6px rgba(39,174,96,0.45);
+}
+
+
+/* =========================
+   TILE BASE (ONE SOURCE OF TRUTH)
+========================= */
+
+.tile,
+button.tile {
+    /* Layout */
+    position: relative;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+
+    /* Shape */
+    border-radius: var(--tile-gloss-radius);
+    padding: 20px;
+
+    /* Typography */
+    font-size: 1.3em;
+    font-weight: bold;
+    color: inherit;
+    font: inherit;
+
+    /* ======================
+       Background stack
+       (BOTTOM → TOP)
+       1. Solid tile color
+       2. Theme gradient (animated)
+       3. Optional gloss handled by ::before
+    ====================== */
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255,255,255, calc(0.10 * var(--tile-gloss))),
+            rgba(255,255,255, 0)
+     ),
+        var(--tile-gradient),
+        color-mix(
+            in srgb,
+            var(--tile) 55%,
+            transparent
+        );
+
+    background-size:
+        var(--tile-gradient-size),
+        auto;
+
+    background-position:
+        0% 50%,
+        center;
+
+    animation:
+        tile-drift var(--tile-gradient-speed) linear infinite;
+
+    /* Glass blur (only active when --tile-blur > 0) */
+    backdrop-filter: blur(calc(var(--tile-blur) * 1px));
+    -webkit-backdrop-filter: blur(calc(var(--tile-blur) * 1px));
+    background-clip: padding-box;
+
+    /* Depth + softness + glow */
+    box-shadow:
+        /* Inner neon glow */
+        inset 0 0 calc(14px * var(--tile-glow))
+            color-mix(in srgb, var(--accent) 70%, transparent),
+
+        inset 0 0 calc(32px * var(--tile-glow))
+            color-mix(in srgb, var(--accent) 40%, transparent),
+
+        /* Inner highlight */
+        inset 0 1px 0
+            rgba(255,255,255,
+              calc(0.15 * var(--tile-gloss) * var(--tile-gloss-strength))
+            ),
+
+        inset 0 -1px 0
+            rgba(0,0,0,
+              calc(0.25 * var(--tile-gloss))
+            ),
+
+        /* Outer depth */
+        0 8px 18px
+            rgba(0,0,0,
+              calc(0.35 - (0.15 * var(--tile-softness)))
+            );
+
+    /* Surface hardness */
+    filter: contrast(calc(1 + (0.15 * var(--tile-hardness))));
+
+    /* Interaction */
+    cursor: pointer;
+    border: none;
+    appearance: none;
+    -webkit-appearance: none;
+
+    transition:
+        transform 0.15s ease,
+        filter 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+/* =========================
+   Gloss highlight overlay
+========================= */
+.tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255,255,255, calc(0.18 * var(--tile-gloss))),
+            rgba(255,255,255, 0) 45%
+        );
+
+    box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.08);
+
+    pointer-events: none;
+}
+
+/* =========================
+   Hover / States
+========================= */
+
+.tile:hover {
+    transform: scale(1.02);
+    filter:
+        contrast(calc(1 + (0.15 * var(--tile-hardness))))
+        brightness(1.06);
+}
+
+.tile .icon-img {
+    width: 48px;
+    height: 48px;
+}
+
+.tile .label {
+    margin-top: 6px;
+}
+
+.tile.disabled {
+    opacity: 0.35;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+.tile.active {
+    outline: 3px solid var(--accent);
+    outline-offset: -3px;
+}
+
+.tile.inactive {
+    opacity: 0.45;
+    filter: grayscale(1);
+}
+
+/* ===============================
+   Prevent text selection on tiles
+=============================== */
+.tile {
+  -webkit-user-select: none; /* iOS / Safari */
+  user-select: none;
+
+  -webkit-touch-callout: none; /* iOS long-press menu */
+  -webkit-tap-highlight-color: transparent; /* mobile tap flash */
+}
+
+/* ===============================
+   Universal press-in behavior
+=============================== */
+.tile {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.tile:active {
+  transform: translate(2px, 2px);
+}
+
+/* Press-in depth for normal tiles */
+.tile:active {
+  box-shadow:
+    inset 4px 4px 10px rgba(0,0,0,0.35),
+    inset -3px -3px 6px rgba(255,255,255,0.05);
+}
+
+.tile { position: relative; }
+
+/* ===============================
+   TAP-HOLD — menu icon (SVG mask)
+=============================== */
+.tile.tap-hold::before {
+  content: "";
+  position: absolute;
+
+  top: 6px;
+  left: 6px;
+
+  width: 24px;
+  height: 24px;
+
+  background-color: var(--accent);
+  opacity: 0.65;
+
+  -webkit-mask: url("/static/icons/menu.svg") no-repeat center;
+  mask: url("/static/icons/menu.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+
+/* ===============================
+   TAP-NAV — vertical dots (SVG mask)
+=============================== */
+.tile.tap-nav::after {
+  content: "";
+  position: absolute;
+
+  top: 6px;
+  left: 6px;
+
+  width: 24px;
+  height: 24px;
+
+  background-color: var(--accent);
+  opacity: 0.75;
+
+  -webkit-mask: url("/static/icons/vertdots.svg") no-repeat center;
+  mask: url("/static/icons/vertdots.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+
+/* TAP-NAV — motion cue */
+.tile.tap-nav:active {
+  transform: translateX(2px);
+}
+
+/* ===============================
+   PC action indicator
+=============================== */
+.tile.tap-pc::before {
+  content: "";
+  position: absolute;
+
+  top: 6px;
+  left: 6px;
+
+  width: 24px;
+  height: 24px;
+
+  background-color: var(--accent);
+  opacity: 0.7;
+
+  -webkit-mask: url("/static/icons/pc.svg") no-repeat center;
+  mask: url("/static/icons/pc.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+
+/* ===============================
+   TAP-CYCLE — arrow (top-left, large)
+=============================== */
+.tile.tap-cycle::after {
+  content: "";
+  position: absolute;
+
+  top: 6px;
+  left: 6px;
+
+  width: 32px;
+  height: 32px;
+
+  background-color: var(--accent);
+  opacity: 0.75;
+
+  -webkit-mask: url("/static/icons/arrowRight.svg") no-repeat center;
+  mask: url("/static/icons/arrowRight.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+.tile.tap-cycle:active::after {
+  transform: translateX(3px);
+}
+
+/* ===============================
+   Discord mute tile — extra TAP-HOLD indicator
+   (bottom-right, menu.svg)
+=============================== */
+.tile.discord-mute-tile.tap-hold::after {
+  content: "";
+  position: absolute;
+
+  bottom: 6px;
+  right: 6px;
+
+  width: 24px;
+  height: 24px;
+
+  background-color: var(--accent);
+  opacity: 0.65;
+
+  -webkit-mask: url("/static/icons/menu.svg") no-repeat center;
+  mask: url("/static/icons/menu.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+
+/* ===============================
+   PC icon — ONLY pinned PC tiles
+=============================== */
+.tile.pinned-pc::after {
+  content: "";
+  position: absolute;
+
+  bottom: 6px;
+  right: 6px;
+
+  width: 24px;
+  height: 24px;
+
+  background-color: var(--accent);
+  opacity: 0.65;
+
+  -webkit-mask: url("/static/icons/pc.svg") no-repeat center;
+  mask: url("/static/icons/pc.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+
+/* ===============================
+   TAP-SYSTEM — system / device indicator
+=============================== */
+.tile.tap-system::before {
+  content: "";
+  position: absolute;
+
+  top: 6px;
+  left: 6px;   /* keep system indicators on the left side */
+
+  width: 24px;
+  height: 24px;
+
+  background-color: var(--accent);
+  opacity: 0.6;
+
+  -webkit-mask: url("/static/icons/developerboard.svg") no-repeat center;
+  mask: url("/static/icons/developerboard.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+
+/* ===============================
+   TAP-LIGHTS — lighting control indicator
+=============================== */
+.tile.tap-lights::before {
+  content: "";
+  position: absolute;
+
+  top: 6px;
+  left: 6px;
+
+  width: 24px;
+  height: 24px;
+
+  background-color: var(--accent);
+  opacity: 0.65;
+
+  -webkit-mask: url("/static/icons/light.svg") no-repeat center;
+  mask: url("/static/icons/light.svg") no-repeat center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  pointer-events: none;
+}
+
+
+/* =========================
+   Shared Layout
+========================= */
+
+.index-page .dashboard,
+.programs-page .dashboard,
+.system-page .dashboard,
+.websites-page .dashboard,
+.weather-page .dashboard,
+.lights-page .dashboard {
+    height: calc(100vh - 64px);
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 12px 0;
+    overflow: hidden;
+}
+
+/* =========================
+   Shared 2x2 Grid
+========================= */
+
+.index-page .tile-grid,
+.programs-page .tile-grid,
+.system-page .tile-grid,
+.websites-page .tile-grid,
+.lights-page .tile-grid {
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 16px;
+}
+
+/* =========================
+   Index Page
+========================= */
+
+.index-page .tile {
+    font-size: 1.5em;
+}
+.programs-page .tile,
+.websites-page .tile {
+    font-size: 1.5em;
+}
+
+/* =========================
+   LIGHTS PAGE (LOCKED SIZE)
+========================= */
+
+.lights-page .tile,
+.lights-page button.tile {
+    font-size: 1.3em;
+    padding: 20px;
+}
+
+/* =========================
+   Lights Controls
+========================= */
+
+/* =========================
+   Shared Slider Base
+========================= */
+.lights-page input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+
+  width: 100%;
+  height: 14px;              /* ⬅️ thicker */
+  border-radius: 999px;
+
+  background: rgba(255,255,255,0.18);
+  outline: none;
+  cursor: pointer;
+
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.45);
+}
+
+.lights-page input[type="range"]::-moz-range-track {
+  height: 14px;
+  border-radius: 999px;
+  background: inherit;
+}
+
+/* =========================
+   Kelvin Slider
+========================= */
+
+#kelvinSlider {
+  height: 14px;
+  border-radius: 6px;
+
+  background: linear-gradient(
+    to right,
+    #ff9b4a 0%,
+    #ffd7a0 25%,
+    #ffffff 50%,
+    #cfe8ff 75%,
+    #9fd3ff 100%
+  );
+}
+
+#kelvinSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+
+  background: var(--thumb-color, #fff);
+  border: none;
+
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,0.18),
+    0 6px 14px rgba(0,0,0,0.45);
+
+  transition: transform 0.15s ease;
+}
+
+#kelvinSlider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+#kelvinSlider::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--thumb-color, #fff);
+  border: none;
+
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,0.18),
+    0 6px 14px rgba(0,0,0,0.45);
+}
+/* =========================
+   Brightness Slider
+========================= */
+
+#brightnessSlider {
+  background: linear-gradient(
+    to right,
+    var(--accent),
+    var(--accent)
+  );
+}
+
+#brightnessSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+
+  background: #fff;
+  border: none;
+
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,0.18),
+    0 6px 14px rgba(0,0,0,0.45);
+}
+
+#brightnessSlider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+}
+
+.lights-page .button-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.lights-page .button-row button {
+    flex: 1;
+    height: 52px;
+    font-size: 1.1em;
+    border-radius: 10px;
+    border: none;
+    color: #fff;
+}
+
+.lights-page .button-row button.on {
+    background: var(--power-on);
+}
+
+.lights-page .button-row button.off {
+    background: var(--power-off);
+}
+
+.lights-page .brightness-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.kelvin-control {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+
+.kelvin-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+
+/* =========================
+   Color Picker Button
+========================= */
+
+.lights-page #pickr-button {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+        inset 0 0 0 2px #333,
+        0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* =========================
+   System Page Buttons
+========================= */
+
+.system-page .tile-grid form {
+    display: flex;
+    margin: 0;
+}
+
+.system-page .tile-grid form > button.tile {
+    width: 100%;
+    height: 100%;
+}
+
+/* =========================
+   Screensaver
+========================= */
+
+#screensaver {
+    position: fixed;
+    inset: 0;
+    background: black;
+    color: white;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s;
+    z-index: 9999;
+}
+
+#screensaver.show {
+    opacity: 1;
+    pointer-events: all;
+    cursor: none;
+}
+
+#ss-clock {
+    font-family: 'Fredoka One', cursive;
+    font-size: 64px;
+}
+
+#ss-date {
+    font-family: 'Fredoka One', cursive;
+    font-size: 36px;
+}
+
+/* =========================
+   Icons
+========================= */
+
+.icon-img.material {
+    filter: invert(1) brightness(1.1);
+}
+
+
+/* =========================
+   FIX Lights page oversized tiles
+========================= */
+
+/* Prevent lights tiles from stretching vertically */
+.lights-page .tile {
+    align-self: stretch;
+    justify-content: center;
+}
+
+/* Limit internal content width */
+.lights-page .tile > * {
+    max-width: 100%;
+}
+
+/* Power buttons: constrain width so they don't explode */
+.lights-page .button-row {
+    max-width: 100%;
+}
+
+/* Prevent single tile from feeling "giant" */
+.lights-page .tile {
+    padding: 18px;
+}
+
+/* Center brightness percentage under slider */
+.lights-page .brightness-row span {
+    display: block;
+    text-align: center;
+    margin-top: 6px;
+}
+
+
+/* =========================
+   FIX Pickr White Background
+========================= */
+
+/* Main picker container */
+.pcr-app {
+    background: var(--panel) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.7) !important;
+}
+
+/* Remove white borders */
+.pcr-app * {
+    border-color: transparent !important;
+}
+
+/* Color square */
+.pcr-selection {
+    background: #1f2330 !important;
+    border-radius: 12px !important;
+}
+
+/* Hue slider background */
+.pcr-hue {
+    background: linear-gradient(
+        to right,
+        red,
+        yellow,
+        lime,
+        cyan,
+        blue,
+        magenta,
+        red
+    ) !important;
+    border-radius: 10px !important;
+}
+
+
+/* Slider handles */
+.pcr-slider {
+    border: 2px solid #fff !important;
+}
+
+/* Save / Clear buttons */
+.pcr-save,
+.pcr-clear {
+    background: var(--tile) !important;
+    color: var(--text) !important;
+    border-radius: 8px !important;
+    font-weight: bold;
+}
+
+/* Save button accent */
+.pcr-save {
+    background: var(--accent) !important;
+    color: #fff !important;
+}
+
+/* Kill white padding wrapper */
+.pcr-app .pcr-interaction {
+    background: transparent !important;
+}
+
+/* Allow internal scrolling */
+.pcr-app .pcr-interaction {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* =========================
+   System Stats – Progress Bars
+========================= */
+
+.progress-bar {
+    width: 100%;
+    height: 22px;
+    background: #1f2330;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.9em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: width 0.4s ease, background-color 0.3s ease;
+}
+
+/* Warning states */
+.progress-fill.warn {
+    background: #f1c40f;
+}
+
+.progress-fill.danger {
+    background: #e74c3c;
+}
+
+
+/* =========================
+   Shared Progress Bars
+========================= */
+
+.progress-bar {
+    width: 100%;
+    height: 26px;
+    background: #1f2330;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 8px;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.7);
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    min-width: 0;
+    background: var(--accent);
+    color: #ffffff;
+    font-size: 0.9em;
+    font-weight: 700;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition:
+        width 0.4s ease,
+        background-color 0.3s ease;
+}
+
+/* Optional warning colors (safe for future use) */
+.progress-fill.warn {
+    background: #f1c40f;
+}
+
+.progress-fill.danger {
+    background: #e74c3c;
+}
+
+/* =========================
+   Steam Status Colors
+========================= */
+
+/* Default (online) */
+.status-dot.online {
+    background-color: #27ae60; /* green */
+    box-shadow: 0 0 6px rgba(39,174,96,0.6);
+}
+
+/* Away */
+.status-dot.away {
+    background-color: #f39c12; /* orange */
+    box-shadow: 0 0 6px rgba(243,156,18,0.6);
+}
+
+/* In Game */
+.status-dot.ingame {
+    background-color: #3498db; /* blue */
+    box-shadow: 0 0 6px rgba(52,152,219,0.6);
+}
+
+/* Offline */
+.status-dot.offline {
+    background-color: #7f8c8d; /* gray */
+    box-shadow: none;
+}
+
+/* Unknown fallback */
+.status-dot.unknown {
+    background-color: #555;
+}
+
+/* ======================
+   Active AMS Tray 
+====================== */
+
+.tile.ams-tile.active-ams {
+    position: relative;
+    z-index: 2;
+}
+
+/* Soft breathing ring */
+.tile.ams-tile.active-ams::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+
+    /* blue-white ring that works on all filament colors */
+    box-shadow:
+        inset 0 0 0 2px rgba(100, 181, 246, 0.9),
+        inset 0 0 0 4px rgba(0, 0, 0, 0.35);
+
+    animation: amsPulse 2.8s ease-in-out infinite;
+}
+
+/* ===============================
+   AMS tiles — no accent gradient
+=============================== */
+.tile.ams-tile {
+  background-image: none !important;
+}
+
+/* Smooth breathing */
+@keyframes amsPulse {
+    0%   { opacity: 0.35; }
+    50%  { opacity: 0.95; }
+    100% { opacity: 0.35; }
+}
+
+.power-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+/* OFF = red */
+.power-btn.off {
+  background: #e74c3c;
+  box-shadow:
+    0 0 8px rgba(231, 76, 60, 0.6),
+    inset 0 0 0 1px rgba(255,255,255,.15);
+}
+
+/* ON = green */
+.power-btn.on {
+  background: #27ae60;
+  box-shadow:
+    0 0 10px rgba(39, 174, 96, 0.8),
+    0 0 18px rgba(39, 174, 96, 0.5),
+    inset 0 0 0 1px rgba(255,255,255,.2);
+}
+
+
+
+
+.power-btn:active {
+    transform: scale(0.97);
+}
+
+
+.header-time {
+    margin-left: 20px;
+    font-size: 1.0rem;
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+    white-space: nowrap;
+}
+
+/* ==================================================
+   Base tile
+================================================== */
+
+.steam-game-tile {
+    position: relative;
+    border-radius: 14px;
+}
+
+
+/* ==================================================
+   Currently Playing
+================================================== */
+
+.steam-game-tile.steam-playing {
+    border-radius: 14px;
+
+    background-color: rgba(33, 150, 243, 0.10);
+
+    box-shadow:
+        0 0 18px rgba(33, 150, 243, 0.45),
+        0 0 36px rgba(33, 150, 243, 0.25);
+
+    animation: steam-breathe 3.5s ease-in-out infinite;
+}
+
+/* ===== Soft breathing glow ===== */
+@keyframes steam-breathe {
+    0%, 100% {
+        box-shadow:
+            0 0 14px rgba(33, 150, 243, 0.35),
+            0 0 28px rgba(33, 150, 243, 0.18);
+    }
+    50% {
+        box-shadow:
+            0 0 22px rgba(33, 150, 243, 0.55),
+            0 0 44px rgba(33, 150, 243, 0.30);
+    }
+}
+
+
+/* ==================================================
+   In-Game badge (hidden by default)
+================================================== */
+
+.in-game-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+
+    padding: 4px 8px;
+    border-radius: 999px;
+
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+
+    background: rgba(33, 150, 243, 0.95);
+    color: #ffffff;
+
+    box-shadow:
+        0 0 0 1px rgba(255,255,255,0.25),
+        0 0 12px rgba(33, 150, 243, 0.65);
+
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+
+    pointer-events: none;
+}
+
+/* ==================================================
+   Show badge only when playing
+================================================== */
+
+.steam-game-tile.steam-playing .in-game-badge {
+    opacity: 1;
+    transform: scale(1);
+}
+
+
+/* =========================
+   DESKTOP: full-width dashboard
+========================= */
+@media (min-width: 1400px) {
+
+    .index-page .dashboard,
+    .programs-page .dashboard,
+    .system-page .dashboard,
+    .websites-page .dashboard,
+    .weather-page .dashboard,
+    .lights-page .dashboard {
+        max-width: none;
+        padding: 24px 48px;
+    }
+
+    .index-page .tile-grid,
+    .programs-page .tile-grid,
+    .system-page .tile-grid,
+    .websites-page .tile-grid,
+    .lights-page .tile-grid {
+        gap: 32px;
+    }
+}
+
+/* =========================
+   Fold outer screen / phones
+========================= */
+@media (max-width: 500px) {
+
+    .dashboard {
+        padding: 12px;
+    }
+
+    .tile-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        gap: 14px;
+    }
+
+    .tile {
+        min-height: 120px;
+        font-size: 1.3em;
+    }
+}
+
+
+/* =========================
+   Fold inner screen (unfolded)
+========================= */
+@media (min-width: 600px) and (max-width: 1200px)
+       and (orientation: landscape) {
+
+    .dashboard {
+        max-width: none;
+        padding: 20px 24px;
+    }
+
+    .tile-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .tile {
+        font-size: 1.6em;
+    }
+}
+
+/* =========================
+   Paper theme icon fix
+========================= */
+
+:root[data-theme="paper"] .icon-img {
+  filter: none;
+  opacity: 1;
+}
+
+/* =========================
+   Paper theme tile hover
+========================= */
+
+:root[data-theme="paper"] .tile:hover {
+  background-color: #ffffff;
+  box-shadow:
+    0 6px 14px rgba(0,0,0,0.08),
+    inset 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+:root[data-theme="paper"] .tile.active {
+  outline-color: rgba(0,0,0,0.25);
+}
+
+:root[data-theme="paper"] .icon-img {
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.15));
+}
+/* =========================
+   Paper theme base tile contrast
+========================= */
+
+:root[data-theme="paper"] .tile {
+  background-color: #f4f4f4; /* slightly darker than bg */
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.05);
+}
+:root[data-theme="paper"] .icon-img {
+  filter: none;
+  opacity: 1;
+}
+:root[data-theme="paper"] .icon-img {
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.15));
+}
+:root[data-theme="paper"] .tile:hover {
+  background-color: #ffffff;
+  box-shadow:
+    0 6px 16px rgba(0,0,0,0.12),
+    inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+:root[data-theme="paper"] .tile {
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* =========================
+   Weather Page
+========================= */
+
+.weather-page html,
+.weather-page body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+.weather-page .weather-wrap {
+    height: calc(100vh - 56px); /* ⬅ smaller header */
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 10px 14px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ================= Current ================= */
+
+.weather-page .current {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.weather-page .current img {
+    width: 40px;
+    height: 40px;
+}
+
+.weather-page .current .temp {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.weather-page .current .desc {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
+
+/* ================= Stats ================= */
+
+.weather-page .stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 8px;
+}
+
+.weather-page .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.weather-page .stat span {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.weather-page .stat label {
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+
+/* ================= Titles ================= */
+
+.weather-page .section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 2px 4px 0;
+}
+
+/* ================= Hourly ================= */
+
+.weather-page .hourly {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 4px 2px;
+}
+
+.weather-page .hour {
+    min-width: 64px;
+    background: var(--tile);
+    border-radius: 12px;
+    padding: 6px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.weather-page .hour img {
+    width: 24px;
+    height: 24px;
+}
+
+/* ================= Daily ================= */
+
+.weather-page .daily {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.weather-page .day {
+    background: var(--tile);
+    border-radius: 12px;
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.82rem;
+}
+
+.weather-page .day img {
+    width: 28px;
+    height: 28px;
+}
+
+/* ================= Toast ================= */
+
+.weather-page .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel);
+    padding: 8px 14px;
+    border-radius: 14px;
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.weather-page .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-6px);
+}
+
+/* =========================
+   Weather + Tile integration fixes
+========================= */
+
+/* Weather tiles should NOT be full flex tiles */
+.weather-page .tile {
+    display: block;
+    width: auto;
+    height: auto;
+    min-height: unset;
+    min-width: unset;
+
+    /* Keep material effects, not layout */
+    padding: inherit;
+}
+
+/* ===== Main weather card ===== */
+.weather-page .current.tile {
+    padding: 12px 14px;
+}
+
+/* ===== Hourly tiles ===== */
+.weather-page .hour.tile {
+    min-width: 64px;
+    padding: 6px;
+    font-size: 0.8rem;
+}
+
+/* ===== Daily tiles ===== */
+.weather-page .day.tile {
+    padding: 8px 6px;
+    font-size: 0.82rem;
+}
+/* ================= Hourly (centered when short) ================= */
+
+.weather-page .hourly {
+    overflow-x: auto;
+    padding: 6px 2px;
+}
+
+/* Inner flex row */
+.weather-page .hourly-inner {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    /* Allow scrolling when content is wider than screen */
+    width: max-content;
+    min-width: 100%;
+}
+
+/* =========================
+   Login Page
+========================= */
+
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--bg);
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* ================= Login Box ================= */
+
+.login-page .login-box {
+    position: relative;
+    background-color: var(--panel);
+    padding: 12px 12px 16px;
+    border-radius: 20px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    text-align: center;
+    width: 240px;
+    max-width: 90%;
+    color: var(--text);
+    box-sizing: border-box;
+}
+
+.login-page .login-box h2 {
+    margin-bottom: 12px;
+    font-size: 22px;
+}
+
+/* ================= Shake Animation ================= */
+
+@keyframes login-shake {
+    0%   { transform: translateX(0); }
+    20%  { transform: translateX(-5px); }
+    40%  { transform: translateX(5px); }
+    60%  { transform: translateX(-5px); }
+    80%  { transform: translateX(5px); }
+    100% { transform: translateX(0); }
+}
+
+.login-page .shake {
+    animation: login-shake 0.3s ease;
+}
+
+/* ================= PIN Display ================= */
+
+.login-page .pin-display {
+    font-size: 24px;
+    letter-spacing: 8px;
+    background-color: var(--tile);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 10px;
+    user-select: none;
+}
+
+/* ================= Keypad ================= */
+
+.login-page .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.login-page .keypad button {
+    font-size: 18px;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background-color: var(--tile);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.login-page .keypad button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+}
+
+.login-page .keypad button:active {
+    background-color: rgba(255,255,255,0.08);
+}
+
+/* Secondary action (Clear) */
+.login-page .keypad button.clear {
+    background-color: rgba(255,255,255,0.06);
+    color: var(--muted);
+    font-weight: bold;
+}
+
+.login-page .keypad button.clear:hover {
+    background-color: rgba(255,255,255,0.12);
+    color: var(--text);
+}
+
+/* ================= Bottom Row ================= */
+
+.login-page .keypad-bottom {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.login-page .keypad-bottom button {
+    font-size: 18px;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+/* Back */
+.login-page .keypad-bottom button.back {
+    background-color: rgba(255,255,255,0.06);
+    color: var(--muted);
+    font-weight: bold;
+}
+
+.login-page .keypad-bottom button.back:hover {
+    background-color: rgba(255,255,255,0.12);
+    color: var(--text);
+}
+
+/* Enter */
+.login-page .keypad-bottom button.enter {
+    background-color: var(--accent);
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.login-page .keypad-bottom button.enter:hover {
+    filter: brightness(1.1);
+}
+
+/* ================= Error Message ================= */
+
+.login-page .error {
+    color: var(--power-off);
+    margin-bottom: 6px;
+    height: 1.2em;
+    transition: opacity 0.3s ease;
+    opacity: 1;
+}
+
+.login-page .error.hidden {
+    opacity: 0;
+}
+
+/* ================= Responsive ================= */
+
+@media (max-width: 500px) {
+    .login-page .login-box {
+        width: 90%;
+        padding: 10px 10px 14px;
+    }
+
+    .login-page .pin-display {
+        font-size: 22px;
+        letter-spacing: 6px;
+    }
+
+    .login-page .keypad button,
+    .login-page .keypad-bottom button {
+        font-size: 16px;
+        padding: 8px;
+    }
+}
+
+/* =========================
+   Camera Page
+========================= */
+
+/* Camera page behaves like other dashboard pages */
+.camera-page .dashboard {
+    height: calc(100vh - 64px);
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 12px;
+}
+
+/* Single large tile instead of grid */
+.camera-page .camera-tile {
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    border-radius: 18px;
+    background-color: var(--tile);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    display: flex;
+}
+
+/* Inner frame keeps camera padded */
+.camera-page .camera-frame {
+    flex: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Camera stream/image sizing */
+.camera-page .camera-frame img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* =========================
+   Camera / Media Tiles
+========================= */
+
+.tile-media {
+    padding: 10px;              /* tighter than normal tiles */
+    align-items: stretch;       /* don't center like buttons */
+    justify-content: stretch;
+}
+
+.tile-media .camera-frame {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+    background: #000;
+}
+
+/* Camera image behavior */
+.tile-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Reduce gloss intensity on live video */
+.tile-media {
+    --tile-gloss-strength: 0.5;
+}
+
+@media (min-width: 1024px) {
+    .camera-page .dashboard {
+        max-width: 1200px;   /* or 100% if you want full bleed */
+        padding: 20px;
+    }
+
+    .camera-page .camera-tile {
+        padding: 16px;
+        border-radius: 22px;
+    }
+
+    .camera-frame img {
+        object-fit: cover;  /* fills more of the tile on PC */
+    }
+}
+
+/* =========================
+   Upload Page
+========================= */
+
+.upload-page .upload-panel {
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.upload-page .drop-zone {
+    border: 2px dashed rgba(255,255,255,0.25);
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255,255,255,0.03);
+}
+
+.upload-page .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(76,175,80,0.12);
+}
+
+.upload-page .drop-zone.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
+.upload-page .drop-title {
+    font-size: 1.25em;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.upload-page .drop-sub {
+    font-size: 0.9em;
+    opacity: 0.75;
+}
+
+.upload-page .upload-status {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 0.95em;
+    min-height: 1.4em;
+}
+
+.upload-page .upload-status.success {
+    color: var(--accent);
+}
+
+.upload-page .upload-status.error {
+    color: #e74c3c;
+}
+
+.upload-page input[type="file"] {
+    display: none;
+}
+
+/* =========================
+   Steam – Pinned Games
+========================= */
+
+/* ===== Tile ===== */
+.steam-pinned-page .pinned-tile {
+    user-select: none;
+}
+
+.steam-pinned-page .pinned-tile.editing {
+    outline: 2px dashed var(--accent);
+}
+
+/* ===== Tile Art ===== */
+.steam-pinned-page .pin-art-wrap {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.steam-pinned-page .pin-art {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+}
+
+/* ===== Overlay ===== */
+.steam-pinned-page .pin-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    z-index: 9998;
+}
+
+.steam-pinned-page .pin-overlay.show {
+    display: block;
+}
+
+/* ===== Panels ===== */
+.steam-pinned-page .pin-panel {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 16px;
+    width: min(720px, calc(100vw - 24px));
+    max-height: min(65vh, 520px);
+    background: var(--panel);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+    overflow: hidden;
+    display: none;
+    z-index: 9999;
+}
+
+.steam-pinned-page .pin-panel.show {
+    display: block;
+}
+
+.steam-pinned-page .pin-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.steam-pinned-page .pin-panel-title {
+    font-weight: 800;
+}
+
+.steam-pinned-page .pin-panel-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* ===== Friends Playing ===== */
+.steam-pinned-page .friends-playing {
+    font-size: 0.8rem;
+    margin-top: 2px;
+    line-height: 1.2;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ===== Picker List ===== */
+.steam-pinned-page .pin-list {
+    max-height: calc(65vh - 52px);
+    overflow-y: auto;
+    padding: 6px 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.steam-pinned-page .pin-list::-webkit-scrollbar {
+    display: none;
+}
+
+.steam-pinned-page .pin-section {
+    padding: 10px 14px 6px;
+    font-size: 0.75em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.steam-pinned-page .pin-item {
+    padding: 12px 14px;
+    cursor: pointer;
+}
+
+.steam-pinned-page .pin-item:hover {
+    background: #3c4150;
+}
+
+.steam-pinned-page .pin-item.selected {
+    background: rgba(76,175,80,0.25);
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.steam-pinned-page .pin-divider {
+    height: 1px;
+    margin: 6px 0;
+    background: rgba(255,255,255,0.08);
+}
+
+/* ===== Launch Confirm ===== */
+.steam-pinned-page .launch-body {
+    padding: 18px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: center;
+}
+
+.steam-pinned-page .launch-title {
+    font-size: 1.25em;
+    font-weight: 800;
+}
+
+.steam-pinned-page .launch-subtitle {
+    font-size: 0.95em;
+    opacity: 0.85;
+}
+
+.steam-pinned-page .launch-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.steam-pinned-page .launch-actions .tile {
+    flex: 1;
+}
+
+/* Disabled launch button only */
+.steam-pinned-page .launch-actions .tile.disabled {
+    opacity: 0.35;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+/* Text */
+.steam-pinned-page .pin-panel,
+.steam-pinned-page .pin-panel * {
+    color: #ffffff;
+}
+
+.steam-pinned-page .game-name {
+    font-weight: 600;
+}
+
+.steam-pinned-page .game-hours {
+    display: block;
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
+/* ===== Steam Picker – Friends Playing (Dropdown) ===== */
+
+.steam-pinned-page .pin-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.steam-pinned-page .pin-item-friends {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.steam-pinned-page .pin-item-friends img {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+}
+
+/* =========================
+   Steam – Most Played Games
+========================= */
+
+.steam-most-played-page .steam-art {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.steam-most-played-page .friends-playing {
+    font-size: 0.8rem;
+    margin-top: 2px;
+    line-height: 1.2;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ===== Overlay ===== */
+.steam-most-played-page .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    z-index: 9998;
+}
+
+.steam-most-played-page .confirm-overlay.show {
+    display: block;
+}
+
+/* ===== Confirm Panel ===== */
+.steam-most-played-page .confirm-panel {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 16px;
+    width: min(720px, calc(100vw - 24px));
+    background: var(--panel);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+    display: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.steam-most-played-page .confirm-panel.show {
+    display: block;
+}
+
+.steam-most-played-page .confirm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.steam-most-played-page .confirm-title {
+    font-weight: 800;
+}
+
+.steam-most-played-page .confirm-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.steam-most-played-page .confirm-body {
+    padding: 18px 16px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.steam-most-played-page .confirm-game {
+    font-size: 1.25em;
+    font-weight: 800;
+}
+
+.steam-most-played-page .confirm-sub {
+    font-size: 0.95em;
+    opacity: 0.85;
+}
+
+.steam-most-played-page .confirm-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.steam-most-played-page .confirm-actions .tile {
+    flex: 1;
+}
+
+.steam-most-played-page .confirm-actions .tile.disabled {
+    opacity: 0.35;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+.steam-most-played-page .confirm-panel,
+.steam-most-played-page .confirm-panel * {
+    color: #ffffff;
+}
+
+/* =========================
+   Steam – Pinned Friends
+========================= */
+
+/* ===== Tile ===== */
+.steam-friends-page .pinned-tile {
+    user-select: none;
+}
+
+.steam-friends-page .pinned-tile.editing {
+    outline: 2px dashed var(--accent);
+}
+
+/* ===============================
+   STATUS HALO
+=============================== */
+
+.steam-friends-page .status-ring {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 8px;
+    position: relative;
+}
+
+/* Base halo */
+.steam-friends-page .status-ring::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+/* Rotating highlight */
+.steam-friends-page .status-ring::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+        transparent 0deg,
+        currentColor 40deg,
+        transparent 80deg
+    );
+    animation: halo-spin 6s linear infinite;
+    pointer-events: none;
+    opacity: 0.9;
+
+    mask: radial-gradient(circle, transparent 62%, black 63%);
+    -webkit-mask: radial-gradient(circle, transparent 62%, black 63%);
+}
+
+@keyframes halo-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Avatar */
+.steam-friends-page .status-ring img {
+    position: absolute;
+    inset: 4px;
+    width: calc(100% - 8px);
+    height: calc(100% - 8px);
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--panel);
+    z-index: 1;
+}
+
+/* Status colors */
+.steam-friends-page .status-ring.online  { color: #27ae60; }
+.steam-friends-page .status-ring.away    { color: #f39c12; }
+.steam-friends-page .status-ring.ingame  { color: #3498db; }
+.steam-friends-page .status-ring.offline { color: #7f8c8d; }
+
+/* Offline = no halo */
+.steam-friends-page .status-ring.offline::before,
+.steam-friends-page .status-ring.offline::after {
+    display: none;
+}
+
+/* ===== Overlay ===== */
+.steam-friends-page .pin-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    z-index: 9998;
+}
+
+.steam-friends-page .pin-overlay.show {
+    display: block;
+}
+
+/* ===== Panels ===== */
+.steam-friends-page .pin-panel {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 16px;
+    width: min(720px, calc(100vw - 24px));
+    max-height: min(65vh, 520px);
+    background: var(--panel);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+    overflow: hidden;
+    display: none;
+    z-index: 9999;
+}
+
+.steam-friends-page .pin-panel.show {
+    display: block;
+}
+
+.steam-friends-page .pin-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.steam-friends-page .pin-panel-title {
+    font-weight: 800;
+}
+
+.steam-friends-page .pin-panel-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* ===== Picker List ===== */
+.steam-friends-page .pin-list {
+    max-height: calc(65vh - 52px);
+    overflow-y: auto;
+    padding: 6px 0;
+
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.steam-friends-page .pin-list::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* Picker items */
+.steam-friends-page .pin-item {
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.steam-friends-page .pin-item:hover {
+    background: #3c4150;
+}
+
+.steam-friends-page .pin-item.selected {
+    background: rgba(76,175,80,0.25);
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.steam-friends-page .pin-item img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+}
+
+.steam-friends-page .sub-label {
+    font-size: 12px;
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
+/* ===== Steam Friends Picker ===== */
+
+.steam-friends-page .pin-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Avatar ring */
+.steam-friends-page .friend-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.steam-friends-page .friend-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+/* Status colors */
+.steam-friends-page .friend-avatar.online {
+    outline: 2px solid var(--power-on);
+}
+
+.steam-friends-page .friend-avatar.away {
+    outline: 2px solid #f39c12;
+}
+
+.steam-friends-page .friend-avatar.ingame {
+    outline: 2px solid var(--accent);
+}
+
+.steam-friends-page .friend-avatar.offline {
+    outline: 2px solid #666;
+}
+
+/* Text */
+.steam-friends-page .friend-picker-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.steam-friends-page .friend-name {
+    font-weight: 600;
+}
+
+.steam-friends-page .friend-game {
+    font-size: 0.8em;
+    opacity: 0.8;
+    color: var(--accent);
+}
+/* Status text */
+.steam-friends-page .friend-status {
+    font-size: 0.8em;
+    opacity: 0.8;
+    text-transform: capitalize;
+}
+
+/* Status colors */
+.steam-friends-page .friend-status.online {
+    color: var(--power-on);
+}
+
+.steam-friends-page .friend-status.away {
+    color: #f39c12;
+}
+
+.steam-friends-page .friend-status.ingame {
+    color: #4aa3ff;
+}
+
+.steam-friends-page .friend-status.offline {
+    color: #888;
+}
+
+.steam-friends-page .sub-label.online  { color: #27ae60; }
+.steam-friends-page .sub-label.away    { color: #f39c12; }
+.steam-friends-page .sub-label.ingame  { color: #3498db; }
+.steam-friends-page .sub-label.offline { color: #7f8c8d; }
+
+/* =========================
+   Steam – Recent Games
+========================= */
+
+/* ===== Steam Art ===== */
+.steam-recent-page .steam-art {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* ===== Friends Playing ===== */
+.steam-recent-page .friends-playing {
+    font-size: 0.8rem;
+    margin-top: 2px;
+    line-height: 1.2;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ===== Overlay ===== */
+.steam-recent-page .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    z-index: 9998;
+}
+
+.steam-recent-page .confirm-overlay.show {
+    display: block;
+}
+
+/* ===== Confirm Panel ===== */
+.steam-recent-page .confirm-panel {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 16px;
+    width: min(720px, calc(100vw - 24px));
+    background: var(--panel);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+    display: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.steam-recent-page .confirm-panel.show {
+    display: block;
+}
+
+.steam-recent-page .confirm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.steam-recent-page .confirm-title {
+    font-weight: 800;
+}
+
+.steam-recent-page .confirm-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.steam-recent-page .confirm-body {
+    padding: 18px 16px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.steam-recent-page .confirm-game {
+    font-size: 1.25em;
+    font-weight: 800;
+}
+
+.steam-recent-page .confirm-sub {
+    font-size: 0.95em;
+    opacity: 0.85;
+}
+
+.steam-recent-page .confirm-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.steam-recent-page .confirm-actions .tile {
+    flex: 1;
+}
+
+.steam-recent-page .confirm-actions .tile.disabled {
+    opacity: 0.35;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+.steam-recent-page .confirm-panel,
+.steam-recent-page .confirm-panel * {
+    color: #ffffff;
+}
+
+/* ======================
+   Discord Page
+========================= */
+
+/* ----- Voice tile ----- */
+
+/* Override global tile centering */
+.discord-page .tile {
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+/* Channel name */
+.discord-page .discord-channel-name {
+    font-weight: 800;
+    margin-bottom: 12px;
+    text-align: center;
+    font-size: 1.1em;
+}
+
+/* Members list */
+.discord-page .discord-members {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    font-size: 0.95em;
+}
+
+/* ----- Member row ----- */
+.discord-page .discord-member {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;   /* left name / right icons */
+    width: 100%;
+    padding: 4px 6px;
+}
+
+/* Member name */
+.discord-page .discord-member .name {
+    flex: 1;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+/* ----- Icon group ----- */
+.discord-page .voice-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+}
+
+.discord-page .voice-icon {
+    width: 22px;
+    height: 22px;
+    opacity: 1;
+
+    /* turn icon red */
+    filter: invert(23%) sepia(98%) saturate(6200%)
+            hue-rotate(355deg) brightness(95%) contrast(110%);
+}
+
+/* Muted users slightly dim */
+.discord-page .discord-member.muted .name {
+    opacity: 0.75;
+}
+
+.discord-page .voice-icon.muted {
+    filter: invert(23%) sepia(98%) saturate(6200%)
+            hue-rotate(355deg) brightness(100%) contrast(115%);
+}
+
+.discord-page .voice-icon.deafened {
+    filter: invert(16%) sepia(88%) saturate(5200%)
+            hue-rotate(350deg) brightness(85%) contrast(120%);
+}
+
+/* Streaming (blurple glow) */
+.voice-icon.streaming {
+    filter:
+        drop-shadow(0 0 6px rgba(88, 101, 242, 0.9))
+        drop-shadow(0 0 12px rgba(88, 101, 242, 0.4));
+    opacity: 1;
+}
+
+/* Camera (cool blue) */
+.voice-icon.video {
+    filter:
+        drop-shadow(0 0 6px rgba(0, 180, 255, 0.9))
+        drop-shadow(0 0 10px rgba(0, 180, 255, 0.4));
+    opacity: 1;
+}
+
+/* =========================
+   Discord – Streaming Pulse
+========================= */
+
+@keyframes livePulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.voice-icon.streaming {
+    animation: livePulse 1.6s ease-in-out infinite;
+}
+
+/* =========================
+   Discord – Live Indicators
+========================= */
+
+.voice-icon.streaming,
+.voice-icon.video {
+    filter: none;
+    opacity: 1;
+
+    /* Use theme accent color */
+    color: var(--accent);
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent));
+}
+
+/* Optional gentle pulse for live states */
+@keyframes livePulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+}
+
+.voice-icon.muted,
+.voice-icon.deafened {
+    filter: none;
+    color: #e74c3c;
+    opacity: 0.85;
+}
+
+.voice-icon.streaming {
+    animation: livePulse 1.6s ease-in-out infinite;
+}
+
+/* Camera = solid, no pulse (feels calmer than streaming) */
+.voice-icon.video {
+    animation: none;
+}
+
+/* =========================
+   Screen Share Tile
+========================= */
+
+.discord-share-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+}
+
+/* ================= Title ================= */
+
+.discord-share-text {
+    margin-top: 6px;
+}
+
+.share-title {
+    font-size: 0.95rem;
+    opacity: 0.85;
+}
+
+.share-channel {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+/* ================= Icon ================= */
+
+.discord-share-icon img {
+    width: 64px;
+    height: 64px;
+    margin: 12px auto 0;
+    filter: drop-shadow(0 0 6px var(--accent));
+}
+
+/* ================= LIVE Badge ================= */
+
+.live-badge {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: var(--accent);
+    color: #000;
+    display: none;
+
+    /* pulse the glow, not the text */
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent);
+    animation: live-glow-pulse 1.6s ease-out infinite;
+}
+
+/* Show LIVE only when streaming */
+.discord-share-tile.streaming .live-badge {
+    display: block;
+}
+
+/* ================= Glow-only Pulse ================= */
+
+@keyframes live-glow-pulse {
+    0% {
+        box-shadow:
+            0 0 0 0 color-mix(in srgb, var(--accent) 65%, transparent),
+            0 0 6px color-mix(in srgb, var(--accent) 85%, transparent);
+    }
+    70% {
+        box-shadow:
+            0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent),
+            0 0 12px color-mix(in srgb, var(--accent) 90%, transparent);
+    }
+    100% {
+        box-shadow:
+            0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent),
+            0 0 6px color-mix(in srgb, var(--accent) 85%, transparent);
+    }
+}
+/* ================= Mute / Deafen Tile ================= */
+
+.discord-mute-tile {
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* Diagonal divider */
+.mute-diagonal {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        135deg,
+        transparent 49%,
+        rgba(255,255,255,0.15) 50%,
+        transparent 51%
+    );
+    pointer-events: none;
+}
+
+/* Full-tile halves */
+.mute-half {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* ICON BASE */
+.mute-half img {
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    opacity: 0.95;
+    filter:
+        drop-shadow(0 0 6px rgba(0,0,0,0.45))
+        drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 45%, transparent));
+    transition: filter 0.2s, transform 0.2s;
+}
+
+/* Mic — centroid of top-left triangle */
+.mic-half img {
+    left: 32%;
+    top: 30%;
+    transform: translate(-50%, -50%);
+}
+
+/* Deafen — centroid of bottom-right triangle */
+.deafen-half img {
+    left: 68%;
+    top: 70%;
+    transform: translate(-50%, -50%);
+}
+
+/* ===== Active states (future JS hooks) ===== */
+
+.discord-mute-tile.muted .mic-half img {
+    filter:
+        drop-shadow(0 0 12px #ff4d4d)
+        saturate(1.25);
+}
+
+.discord-mute-tile.deafened .deafen-half img {
+    filter:
+        drop-shadow(0 0 12px #ff4d4d)
+        saturate(1.25);
+}
+
+
+/* ======================
+   Discord Picker Overlay
+========================= */
+
+.discord-page .discord-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    z-index: 9998;
+}
+
+.discord-page .discord-overlay.show {
+    display: block;
+}
+
+/* ======================
+   Discord Page
+========================= */
+
+/* ===== Voice Channel Header ===== */
+.discord-page .discord-channel-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+/* Channel name — truncate with … */
+.discord-page #voice-channel-name {
+    flex: 1;
+    min-width: 0;               /* REQUIRED for ellipsis in flex */
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Member count */
+.discord-page .channel-count {
+    flex-shrink: 0;
+    opacity: 0.7;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+
+/* ===== Members List ===== */
+.discord-page .discord-members {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    width: 100%;
+    font-size: 0.95em;
+}
+
+/* Member row */
+.discord-page .discord-member {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    width: 100%;
+    animation: member-in 160ms ease-out;
+}
+
+/* Entry animation */
+@keyframes member-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Member name */
+.discord-page .discord-member .name {
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Highlight self */
+.discord-page .discord-member.self {
+    font-weight: 800;
+}
+
+/* Icon group */
+.discord-page .voice-icons {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Base icon */
+.discord-page .voice-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Muted / Deafened colors */
+.discord-page .voice-icon.muted {
+    filter: invert(23%) sepia(98%) saturate(6200%)
+            hue-rotate(355deg) brightness(100%) contrast(115%);
+}
+
+.discord-page .voice-icon.deafened {
+    filter: invert(16%) sepia(88%) saturate(5200%)
+            hue-rotate(350deg) brightness(85%) contrast(120%);
+}
+
+/* Empty channel state */
+.discord-page .empty-voice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    opacity: 0.5;
+}
+
+
+/* ======================
+   Discord Picker Overlay
+========================= */
+.discord-page .discord-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    z-index: 9998;
+}
+
+.discord-page .discord-overlay.show {
+    display: block;
+}
+
+
+/* ======================
+   Discord Picker Panel
+========================= */
+.discord-page .discord-picker {
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+
+    width: min(720px, calc(100vw - 24px));
+    max-height: 65vh;
+
+    background: var(--panel);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+
+    display: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.discord-page .discord-picker.show {
+    display: block;
+}
+
+/* Picker header */
+.discord-page .discord-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 12px 14px;
+    font-weight: 800;
+
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.discord-page .discord-picker-header button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* Picker list */
+.discord-page .discord-picker-list {
+    max-height: calc(65vh - 52px);
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.discord-page .discord-picker-list::-webkit-scrollbar {
+    display: none;
+}
+
+/* Picker item */
+.discord-page .discord-picker-item {
+    padding: 14px 16px;
+    cursor: pointer;
+}
+
+.discord-page .discord-picker-item:hover {
+    background: #3c4150;
+}
+
+.discord-page .discord-picker-item.selected {
+    background: rgba(76,175,80,0.25);
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+/* ======================
+   Discord – Channel Header
+========================= */
+
+.discord-page .discord-channel-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    font-weight: 800;
+    margin-bottom: 10px;
+
+    max-width: 100%;
+}
+
+/* Truncated channel name */
+.discord-page .channel-title {
+    max-width: 70%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Users indicator (icon + number) */
+.discord-page .channel-users {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    font-size: 0.85em;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+/* Group icon */
+.discord-page .group-icon {
+    width: 18px;
+    height: 18px;
+
+    filter: invert(40%) sepia(90%) saturate(700%)
+            hue-rotate(90deg) brightness(110%) contrast(105%);
+}
+
+/* Highlight when users present */
+.discord-page .discord-channel-name.active {
+    color: var(--accent);
+}
+
+
+/* ======================
+   Discord – Members
+========================= */
+
+.discord-page .discord-members {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    width: 100%;
+    font-size: 0.95em;
+}
+
+/* Member row */
+.discord-page .discord-member {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    animation: member-in 160ms ease-out;
+}
+
+/* Entry animation */
+@keyframes member-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Member name */
+.discord-page .discord-member .name {
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Self highlight */
+.discord-page .discord-member.self {
+    font-weight: 800;
+}
+
+/* Icon group */
+.discord-page .voice-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Base voice icon */
+.discord-page .voice-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Muted icon – red */
+.discord-page .voice-icon.muted {
+    filter: invert(23%) sepia(98%) saturate(6200%)
+            hue-rotate(355deg) brightness(100%) contrast(115%);
+}
+
+/* Deafened icon – darker red */
+.discord-page .voice-icon.deafened {
+    filter: invert(16%) sepia(88%) saturate(5200%)
+            hue-rotate(350deg) brightness(85%) contrast(120%);
+}
+
+/* Empty channel */
+.discord-page .empty-voice {
+    opacity: 0.5;
+    text-align: center;
+    padding: 8px 0;
+}
+
+
+/* ======================
+   Discord Picker – Active Channels
+========================= */
+
+.discord-page .discord-picker-item.active {
+    color: var(--accent);
+}
+
+.discord-page .picker-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+
+    margin-left: 10px;
+    font-size: 0.8em;
+    opacity: 0.85;
+}
+
+.discord-page .picker-count img {
+    width: 14px;
+    height: 14px;
+
+    filter: invert(40%) sepia(90%) saturate(700%)
+            hue-rotate(90deg) brightness(110%) contrast(105%);
+}
+.discord-page .member-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.discord-page .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ===============================
+   Discord Text Channel Tile
+=============================== */
+
+.discord-text-tile {
+    display: flex;
+    flex-direction: column;
+}
+
+.discord-text-messages {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 10px;
+    padding-right: 6px;
+
+    scrollbar-width: thin;
+}
+
+.discord-text-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.discord-text-messages::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: 4px;
+}
+
+.text-placeholder {
+    color: var(--muted);
+    font-size: 0.9em;
+}
+
+/* ===============================
+   Discord text message layout
+=============================== */
+
+.discord-text-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+/* Single message row */
+.discord-text-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+/* Avatar */
+.discord-text-row .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Text container */
+.discord-text-row .text-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0; /* IMPORTANT for wrapping */
+}
+
+/* Username */
+.discord-text-row .author {
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1.1;
+    opacity: 0.95;
+}
+
+/* Message content */
+.discord-text-row .content {
+    font-size: 0.95rem;
+    line-height: 1.25;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    opacity: 0.9;
+}
+
+/* Highlight your own messages */
+.discord-text-row.self .author {
+    color: var(--accent);
+}
+
+.discord-image {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 12px;
+    margin-top: 6px;
+    object-fit: cover;
+}
+.discord-text-row.self .discord-image {
+    outline: 1px solid rgba(255,255,255,0.12);
+}
+
+.image-viewer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+}
+
+.image-viewer-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.image-viewer-overlay img {
+    max-width: 96%;
+    max-height: 96%;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+.discord-channel-name,
+.discord-channel-name * {
+    pointer-events: none;
+}
+#voiceTile * {
+    pointer-events: none;
+}
+
+.discord-text-messages::-webkit-scrollbar {
+    width: 4px;
+}
+
+.discord-text-messages::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+}
+
+.discord-text-messages {
+    overflow-y: auto;
+    scrollbar-width: thin;                 /* Firefox */
+    scrollbar-color: rgba(255,255,255,0.35) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+.discord-text-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.discord-text-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.discord-text-messages::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.35);
+    border-radius: 6px;
+}
+
+.discord-text-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.55);
+}
+
+/* =========================
+   Bolt icon glow (scene active)
+========================= */
+
+.bolt-icon {
+  transition:
+    filter 0.4s ease,
+    transform 0.4s ease,
+    opacity 0.4s ease;
+  opacity: 0.6;
+}
+
+/* When scene is active */
+.tile.active .bolt-icon {
+  opacity: 1;
+  filter:
+    drop-shadow(0 0 6px rgba(255, 215, 0, 0.9))
+    drop-shadow(0 0 14px rgba(255, 215, 0, 0.6));
+  animation: boltPulse 6s ease-in-out infinite;
+}
+
+/* Pulse animation */
+@keyframes boltPulse {
+  0% {
+    transform: scale(1);
+    filter:
+      drop-shadow(0 0 6px rgba(255, 215, 0, 0.6));
+  }
+  50% {
+    transform: scale(1.08);
+    filter:
+      drop-shadow(0 0 10px rgba(255, 215, 0, 1))
+      drop-shadow(0 0 18px rgba(255, 215, 0, 0.7));
+  }
+  100% {
+    transform: scale(1);
+    filter:
+      drop-shadow(0 0 6px rgba(255, 215, 0, 0.6));
+  }
+}
+
+/* Inactive state */
+.tile.inactive .bolt-icon {
+  opacity: 0.35;
+  filter: grayscale(1);
+  animation: none;
+}
+
+@keyframes dice-wobble {
+  0%   { transform: rotate(0deg) scale(1); }
+  20%  { transform: rotate(-15deg) scale(1.05); }
+  40%  { transform: rotate(20deg) scale(1.08); }
+  60%  { transform: rotate(-10deg) scale(1.04); }
+  80%  { transform: rotate(8deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.dice-roll {
+  animation: dice-wobble 520ms cubic-bezier(.34,1.56,.64,1);
+  filter: drop-shadow(0 0 6px rgba(255,255,255,.25));
+}
+
+
+/* Main center temperature */
+.main-temp {
+    font-size: 3rem;
+    font-weight: 800;
+}
+
+/* Hourly temps */
+.hour .temp {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+/* Daily temps */
+.day div:last-child {
+    font-size: 0.95rem;
+}
+
+.hour .temp {
+    letter-spacing: -0.02em;
+}
+
+/* Make hourly span full width */
+.hourly {
+    margin-left: calc(-1 * var(--dashboard-padding, 16px));
+    margin-right: calc(-1 * var(--dashboard-padding, 16px));
+    padding-left: var(--dashboard-padding, 16px);
+    padding-right: var(--dashboard-padding, 16px);
+
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.hourly::-webkit-scrollbar {
+    display: none;
+}
+
+/* =========================
+   GLOBAL Confirm Popup
+   (Steam-style, shared)
+========================= */
+
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    z-index: 9998;
+}
+
+.confirm-overlay.show {
+    display: block;
+}
+
+.confirm-panel {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 16px;
+    width: min(720px, calc(100vw - 24px));
+    background: var(--panel);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+    display: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.confirm-panel.show {
+    display: block;
+}
+
+.confirm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.confirm-title {
+    font-weight: 800;
+}
+
+.confirm-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.confirm-body {
+    padding: 18px 16px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.confirm-game {
+    font-size: 1.25em;
+    font-weight: 800;
+}
+
+.confirm-sub {
+    font-size: 0.95em;
+    opacity: 0.85;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.confirm-actions .tile {
+    flex: 1;
+}
+
+.confirm-actions .tile.disabled {
+    opacity: 0.35;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+.btn-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.confirm-actions .tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+

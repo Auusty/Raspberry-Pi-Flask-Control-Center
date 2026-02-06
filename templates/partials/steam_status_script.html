@@ -1,0 +1,62 @@
+<script>
+let steamInterval = null;
+
+function refreshSteamStatus() {
+    fetch("/api/steam-status")
+        .then(res => res.json())
+        .then(data => {
+            const dot = document.getElementById("steam-dot");
+            const text = document.getElementById("steam-text");
+            if (!dot || !text) return;
+
+            dot.className = "status-dot " + data.status;
+            text.textContent = data.text;
+
+            /* =========================================
+               Notify pages of current game
+            ========================================= */
+            if (typeof highlightCurrentSteamGame === "function") {
+                if (data.status === "ingame" && typeof data.text === "string") {
+                    const match = data.text.match(/^In Game:\s*(.+)$/i);
+                    highlightCurrentSteamGame(match ? match[1] : null);
+                } else {
+                    highlightCurrentSteamGame(null);
+                }
+            }
+        })
+        .catch(() => {});
+}
+
+function startSteamPolling() {
+    if (steamInterval) return;
+    refreshSteamStatus();
+    steamInterval = setInterval(refreshSteamStatus, 10000);
+}
+
+function stopSteamPolling() {
+    if (!steamInterval) return;
+    clearInterval(steamInterval);
+    steamInterval = null;
+}
+
+/* Pause polling when screensaver is active */
+const screensaverE1 = document.getElementById("screensaver");
+
+if (screensaverE1) {
+    const observer = new MutationObserver(() => {
+        if (screensaverE1.classList.contains("show")) {
+            stopSteamPolling();
+        } else {
+            startSteamPolling();
+        }
+    });
+
+    observer.observe(screensaverE1, {
+        attributes: true,
+        attributeFilter: ["class"]
+    });
+}
+
+/* Start immediately */
+startSteamPolling();
+</script>

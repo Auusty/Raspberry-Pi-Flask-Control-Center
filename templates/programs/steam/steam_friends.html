@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Pinned Friends</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="page steam-friends-page programs-page">
+
+{% set title = "Friends" %}
+{% include "partials/steam_header.html" %}
+
+<div class="dashboard">
+    <div class="tile-grid" id="friendsGrid">
+
+        {% for slot, steamid in pinned.items() %}
+        {% set friend = friends | selectattr("steamid", "equalto", steamid) | first %}
+        <div class="tile pinned-tile tap-hold"
+             data-slot="{{ slot }}"
+             data-steamid="{{ steamid if steamid else '' }}"
+             onmousedown="startPress(event, this)"
+             onmouseup="endPress(this)"
+             ontouchstart="startPress(event, this)"
+             ontouchend="endPress(this)">
+
+            {% if friend %}
+            <div class="status-ring {{ friend.status }}">
+                <img src="{{ friend.avatar }}" alt="{{ friend.name }}">
+            </div>
+            {% endif %}
+
+            <div class="label pin-label">
+                {{ friend.name if friend else "Empty" }}
+            </div>
+
+            {% if friend %}
+            <div class="sub-label {{ friend.status }}">
+                {{ friend.text }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+
+<!-- ===== Picker ===== -->
+<div id="pinOverlay" class="pin-overlay" onclick="closePicker()"></div>
+
+<div id="pinPanel" class="pin-panel">
+    <div class="pin-panel-header">
+        <div class="pin-panel-title">Choose Friend</div>
+        <button class="pin-panel-close" onclick="closePicker()">×</button>
+    </div>
+    <div class="pin-list" id="pinList"></div>
+</div>
+
+<!-- ===== Data ===== -->
+<script id="friends-data" type="application/json">
+{{ friends | tojson | safe }}
+</script>
+
+<script>
+let FRIENDS = JSON.parse(
+    document.getElementById("friends-data").textContent || "[]"
+);
+
+let pressTimer = null;
+let activeTile = null;
+let didLongPress = false;
+const HOLD_TIME = 600;
+
+/* ================= Long Press (UNCHANGED) ================= */
+function startPress(e, tile) {
+    if (e && e.cancelable) e.preventDefault();
+    didLongPress = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+        didLongPress = true;
+        openPicker(tile);
+    }, HOLD_TIME);
+}
+
+function endPress() {
+    clearTimeout(pressTimer);
+}
+
+/* ================= Live Friend Status ================= */
+
+async function pollFriends() {
+    try {
+        const res = await fetch("/api/steam/friends", { cache: "no-store" });
+        FRIENDS = await res.json();
+        updateFriendTiles();
+    } catch {
+        /* silent fail */
+    }
+}
+
+function updateFriendTiles() {
+    document.querySelectorAll(".pinned-tile").forEach(tile => {
+        const steamid = tile.dataset.steamid;
+        if (!steamid) return;
+
+        const friend = FRIENDS.find(f => f.steamid === steamid);
+        if (!friend) return;
+
+        /* Status ring */
+        let ring = tile.querySelector(".status-ring");
+        if (!ring) {
+            ring = document.createElement("div");
+            ring.className = "status-ring";
+            ring.innerHTML = `<img>`;
+            tile.insertBefore(ring, tile.firstChild);
+        }
+
+        ring.className = `status-ring ${friend.status}`;
+        ring.querySelector("img").src = friend.avatar;
+
+        /* Name */
+        const name = tile.querySelector(".pin-label");
+        if (name) name.textContent = friend.name;
+
+        /* Status text */
+        let sub = tile.querySelector(".sub-label");
+        if (friend.status === "offline") {
+            if (sub) sub.remove();
+        } else {
+            if (!sub) {
+                sub = document.createElement("div");
+                tile.appendChild(sub);
+            }
+            sub.className = `sub-label ${friend.status}`;
+            sub.textContent = friend.text;
+        }
+    });
+}
+
+/* ================= Picker (UNCHANGED) ================= */
+function openPicker(tile) {
+    activeTile = tile;
+    document.querySelectorAll('.pinned-tile').forEach(t => t.classList.remove('editing'));
+    tile.classList.add('editing');
+
+    const currentId = tile.dataset.steamid;
+    const list = document.getElementById('pinList');
+    list.innerHTML = "";
+
+    const clearItem = document.createElement('div');
+    clearItem.className = 'pin-item';
+    clearItem.innerHTML = `
+        <div style="width:36px;height:36px;border-radius:50%;background:#555;
+                    display:flex;align-items:center;justify-content:center;">×</div>
+        <div>Clear Slot</div>`;
+    clearItem.onclick = clearFriend;
+    list.appendChild(clearItem);
+
+    FRIENDS.forEach(f => {
+        const d = document.createElement('div');
+        d.className = 'pin-item' + (f.steamid === currentId ? ' selected' : '');
+        d.innerHTML = `
+            <div class="friend-avatar ${f.status}">
+                <img src="${f.avatar}">
+            </div>
+            <div class="friend-picker-text">
+                <div class="friend-name">${f.name}</div>
+                ${f.status !== "offline" ? `
+                    <div class="friend-status ${f.status}">
+                        ${f.status === "ingame" ? f.text : f.status}
+                    </div>
+                ` : ``}
+            </div>
+        `;
+        d.onclick = () => pickFriend(f);
+        list.appendChild(d);
+    });
+
+    document.getElementById('pinOverlay').classList.add('show');
+    document.getElementById('pinPanel').classList.add('show');
+}
+
+function closePicker() {
+    document.getElementById('pinOverlay').classList.remove('show');
+    document.getElementById('pinPanel').classList.remove('show');
+    document.querySelectorAll('.pinned-tile').forEach(t => t.classList.remove('editing'));
+    activeTile = null;
+}
+
+function pickFriend(friend) {
+    fetch("/api/steam/friends/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot: activeTile.dataset.slot, steamid: friend.steamid })
+    }).then(() => location.reload());
+}
+
+function clearFriend() {
+    fetch("/api/steam/friends/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot: activeTile.dataset.slot, steamid: null })
+    }).then(() => location.reload());
+}
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closePicker();
+});
+
+/* ================= Start ================= */
+pollFriends();
+setInterval(pollFriends, 5000);
+</script>
+
+{% include "partials/steam_status_script.html" %}
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+</body>
+</html>

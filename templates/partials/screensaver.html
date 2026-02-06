@@ -1,0 +1,146 @@
+<!-- ================= Screensaver Overlay ================= -->
+<div id="screensaver">
+    <div id="ss-container">
+        <div id="ss-clock">00:00:00</div>
+        <div id="ss-date">Saturday, January 10</div>
+    </div>
+</div>
+
+<script>
+(() => {
+    /* ======================================================
+       Elements
+    ====================================================== */
+    const screensaver = document.getElementById("screensaver");
+    const container   = document.getElementById("ss-container");
+    const clock       = document.getElementById("ss-clock");
+    const dateEl      = document.getElementById("ss-date");
+
+    if (!screensaver || !container) return;
+
+    /* ======================================================
+       State
+    ====================================================== */
+    let lastUserInteraction = performance.now();
+    let inputLockedUntil = 0;
+    const maxIdle = 900; // seconds
+
+    let pos = { x: 0, y: 0 };
+    let velocity = { x: 0, y: 0 };
+
+    /* ======================================================
+       Input Handling (HARD BLOCK)
+    ====================================================== */
+    function registerUserInteraction(e) {
+        const now = performance.now();
+
+        // Global cooldown — swallow ghost clicks
+        if (now < inputLockedUntil) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return;
+        }
+
+        // If screensaver is visible, consume the interaction
+        if (screensaver.classList.contains("show")) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            screensaver.classList.remove("show");
+
+            // Kill delayed Chromium click
+            inputLockedUntil = now + 350;
+            lastUserInteraction = now;
+            return;
+        }
+
+        // Ignore synthetic JS events
+        if (!e.isTrusted) return;
+
+        lastUserInteraction = now;
+    }
+
+    // Capture phase is REQUIRED
+    ["pointerdown", "touchstart", "mousedown", "click"].forEach(evt =>
+        window.addEventListener(evt, registerUserInteraction, true)
+    );
+    window.addEventListener("keydown", registerUserInteraction, true);
+
+    /* ======================================================
+       Clock
+    ====================================================== */
+    function updateClock() {
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, "0");
+        const seconds = now.getSeconds().toString().padStart(2, "0");
+        const ampm = hours >= 12 ? "PM" : "AM";
+
+        hours = hours % 12 || 12;
+        clock.textContent = `${hours}:${minutes}:${seconds} ${ampm}`;
+
+        dateEl.textContent = now.toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric"
+        });
+    }
+
+    /* ======================================================
+       Movement
+    ====================================================== */
+    function randomizePosition() {
+        const rect = container.getBoundingClientRect();
+        const margin = 40;
+
+        const maxX = screensaver.clientWidth  - rect.width  - margin;
+        const maxY = screensaver.clientHeight - rect.height - margin;
+
+        pos.x = margin + Math.random() * Math.max(0, maxX);
+        pos.y = margin + Math.random() * Math.max(0, maxY);
+
+        const speed = 0.6;
+        velocity.x = (Math.random() < 0.5 ? -1 : 1) * speed;
+        velocity.y = (Math.random() < 0.5 ? -1 : 1) * speed;
+
+        container.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+    }
+
+    function moveContainer() {
+        const rect = container.getBoundingClientRect();
+
+        pos.x += velocity.x;
+        pos.y += velocity.y;
+
+        const maxX = screensaver.clientWidth  - rect.width;
+        const maxY = screensaver.clientHeight - rect.height;
+
+        if (pos.x <= 0 || pos.x >= maxX) velocity.x *= -1;
+        if (pos.y <= 0 || pos.y >= maxY) velocity.y *= -1;
+
+        container.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+    }
+
+    /* ======================================================
+       Main Loop
+    ====================================================== */
+    function loop() {
+        const idleSeconds =
+            (performance.now() - lastUserInteraction) / 1000;
+
+        if (idleSeconds >= maxIdle && !screensaver.classList.contains("show")) {
+            screensaver.classList.add("show");
+            randomizePosition();
+        }
+
+        updateClock();
+        if (screensaver.classList.contains("show")) moveContainer();
+
+        requestAnimationFrame(loop);
+    }
+
+    requestAnimationFrame(loop);
+})();
+</script>

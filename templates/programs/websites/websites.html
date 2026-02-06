@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Websites</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="websites-page page">
+
+{# ================= Header config ================= #}
+{% set title = "Websites" %}
+{% set back_url = url_for('programs') %}
+{% set back_icon = url_for('static', filename='icons/back.svg') %}
+{% set show_time = true %}
+{% set hide_status = true %}
+
+{# NOTE:
+   Status on this page is controlled by JS (PC health),
+   so we do NOT set status_text or status_class here.
+#}
+
+{% include "partials/header.html" %}
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid">
+
+        {% for site in sites %}
+        <button
+            class="tile website-tile tap-pc"
+            data-site="{{ site.name }}"
+            onclick="openSite(this, '{{ site.name }}')">
+
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/' ~ site.icon) }}"
+                     alt="{{ site.name }}"
+                     class="icon-img">
+            </div>
+
+            <div class="label">{{ site.name }}</div>
+        </button>
+        {% endfor %}
+
+    </div>
+</div>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+<!-- ================= Scripts ================= -->
+<script>
+let pcOnline = false;
+
+/* ==================================================
+   Header PC status compat layer (SAFE)
+================================================== */
+
+const headerStatus = document.querySelector(".header-status");
+
+// Ensure PC status dot exists
+let pcDot = document.getElementById("pc-status-dot");
+if (!pcDot) {
+    pcDot = document.createElement("span");
+    pcDot.id = "pc-status-dot";
+    pcDot.className = "status-dot unknown";
+    headerStatus.appendChild(pcDot);
+}
+
+// Ensure PC status text exists
+let pcText = document.getElementById("pc-status-text");
+if (!pcText) {
+    pcText = document.createElement("span");
+    pcText.id = "pc-status-text";
+    pcText.textContent = "--";
+    headerStatus.appendChild(pcText);
+}
+
+/* ---------- PC health ---------- */
+async function checkPCHealth() {
+    const tiles = document.querySelectorAll(".website-tile");
+    const dot = document.getElementById("pc-status-dot");
+    const text = document.getElementById("pc-status-text");
+
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+
+        pcOnline = !!data.online;
+
+        if (!pcOnline) {
+            tiles.forEach(t => t.classList.add("disabled"));
+            dot.className = "status-dot offline";
+            text.textContent = "PC Offline";
+        } else {
+            tiles.forEach(t => t.classList.remove("disabled"));
+            dot.className = "status-dot online";
+            text.textContent = "PC Online";
+        }
+    } catch {
+        pcOnline = false;
+        tiles.forEach(t => t.classList.add("disabled"));
+        dot.className = "status-dot offline";
+        text.textContent = "PC Offline";
+    }
+}
+
+/* ---------- Open site ---------- */
+function openSite(button, siteName) {
+    if (!pcOnline) return;
+
+    button.classList.add("active");
+
+    fetch(`/open_site/${siteName}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                button.classList.remove("active");
+            }
+        })
+        .catch(() => {
+            button.classList.remove("active");
+        });
+
+    setTimeout(() => button.classList.remove("active"), 1000);
+}
+
+/* ---------- Start ---------- */
+checkPCHealth();
+setInterval(checkPCHealth, 5000);
+</script>
+
+</body>
+</html>

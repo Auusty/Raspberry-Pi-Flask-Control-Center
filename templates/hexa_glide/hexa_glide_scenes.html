@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Scenes</title>
+{% include "partials/head.html" %}
+
+<style>
+.scene-tile { user-select:none; cursor:pointer; }
+.scene-tile:active { transform:scale(.96); filter:brightness(1.15); }
+
+.scene-active-outline {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 14px;
+}
+
+.scene-dropdown {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.scene-dropdown.hidden { display:none; }
+
+.dropdown-panel {
+  background: var(--tile);
+  border-radius: 16px;
+  padding: 12px;
+  width: 80%;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.dropdown-item {
+  padding: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.dropdown-item:active {
+  background: rgba(255,255,255,.08);
+}
+.scene-toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-12px);
+
+  background: var(--panel);
+  color: var(--text);
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-weight: 600;
+
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.55),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity .22s ease,
+    transform .22s ease;
+
+  z-index: 10000;
+}
+
+.scene-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
+</style>
+</head>
+
+<body class="lights-page page">
+
+<!-- ================= Header ================= -->
+<div class="header">
+  <div class="header-left">
+    <a href="{{ url_for('hexa.hexa_glide') }}" class="header-btn back-btn">
+      <img src="{{ url_for('static', filename='icons/back.svg') }}"
+           class="icon-img"
+           alt="Back">
+    </a>
+
+    <span id="header-time" class="header-time">--:--</span>
+  </div>
+
+  <h1 class="header-title">Scenes</h1>
+
+  <div class="header-status" style="display:flex; align-items:center; gap:10px;">
+
+    <!-- Surface -->
+    <button
+      class="header-btn surface-btn"
+      onclick="cycleSurface()"
+      title="Change surface"
+    >
+      <img src="{{ url_for('static', filename='icons/layers.svg') }}"
+           class="icon-img"
+           alt="Surface">
+    </button>
+
+    <!-- Theme -->
+    <button
+      class="header-btn theme-btn"
+      onclick="cycleTheme()"
+      title="Change theme"
+    >
+      <img src="{{ url_for('static', filename='icons/palette.svg') }}"
+           class="icon-img"
+           alt="Theme">
+    </button>
+
+    <!-- Light status (unchanged) -->
+    <span class="status-dot online"></span>
+    <span>Hexa Glide</span>
+  </div>
+</div>
+
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+  <div class="tile-grid">
+
+    <!-- User / DIY scenes -->
+    <div class="tile lights-tile scene-tile tap-hold"
+         id="userScenesTile"
+         onclick="openPicker(USER_SCENES)">
+      <img src="{{ url_for('static', filename='icons/dashboard.svg') }}"
+           class="icon-img"
+           alt="My Scenes">
+      <div class="label" id="userScenesLabel">User Scenes</div>
+    </div>
+
+    <!-- Current scene -->
+    <div class="tile lights-tile scene-tile tap-only"
+         id="currentSceneTile">
+      <img src="{{ url_for('static', filename='icons/bolt.svg') }}"
+           class="icon-img bolt-icon"
+           alt="Current Scene">
+      <div class="label" id="currentSceneLabel">
+        <div style="font-size:.8em; opacity:.7;">Current Scene</div>
+        <div style="font-weight:700;">None</div>
+      </div>
+    </div>
+
+    <!-- Random -->
+    <div class="tile lights-tile scene-tile tap-lights"
+          onclick="applyRandomScene()">
+        <img src="{{ url_for('static', filename='icons/dice.svg') }}"
+            class="icon-img"
+            id="diceIcon"
+            alt="Random Scene">
+        <div class="label">Random Scene</div>
+      </div>
+
+    <!-- Refresh -->
+    <div class="tile lights-tile scene-tile tap-only"
+         id="refreshUserScenes">
+      <img src="{{ url_for('static', filename='icons/refresh.svg') }}"
+           class="icon-img"
+           alt="Refresh Scenes">
+      <div class="label">
+        Refresh My Scenes
+        <div style="font-size:.75em; opacity:.6; margin-top:4px;">
+          Last synced: <span id="lastSync">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================= Dropdown ================= -->
+<div id="sceneDropdown" class="scene-dropdown hidden">
+  <div class="dropdown-panel" id="sceneList"></div>
+</div>
+
+<script>
+/* ================= Data from Flask ================= */
+const USER_SCENES = {{ user_scenes | tojson }};
+let ACTIVE_SCENE  = {{ active_scene | tojson }};
+
+/* ================= Elements ================= */
+const dropdown = document.getElementById("sceneDropdown");
+const list     = document.getElementById("sceneList");
+
+const userLabel    = document.getElementById("userScenesLabel");
+const currentLabel = document.getElementById("currentSceneLabel");
+
+/* ================= Scene UI ================= */
+function updateSceneTiles() {
+  // Left tile
+  userLabel.textContent = "User Scenes";
+
+  currentSceneTile.classList.toggle("active", !!ACTIVE_SCENE);
+  currentSceneTile.classList.toggle("inactive", !ACTIVE_SCENE);
+
+  // Right tile
+  if (!ACTIVE_SCENE) {
+    currentLabel.innerHTML = `
+      <div style="font-size:.8em; opacity:.7;">Current Scene</div>
+      <div style="font-weight:700;">None</div>
+    `;
+    return;
+  }
+
+  currentLabel.innerHTML = `
+    <div style="font-size:.8em; opacity:.7;">Current Scene</div>
+    <div style="font-weight:700;">${ACTIVE_SCENE.name}</div>
+  `;
+}
+
+/* ================= API ================= */
+function applyScene(key) {
+  const scene = USER_SCENES.find(s => s.key === key);
+  if (scene) {
+    ACTIVE_SCENE = scene;
+    updateSceneTiles();
+  }
+
+  fetch("/api/hexa/scene/apply", {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify({ scene_key: key })
+  }).catch(() => {});
+}
+
+function openPicker() {
+  list.innerHTML = "";
+
+  USER_SCENES.forEach(scene => {
+    const el = document.createElement("div");
+    el.className = "dropdown-item";
+    el.textContent = scene.name;
+    el.onclick = () => {
+      dropdown.classList.add("hidden");
+      applyScene(scene.key);
+    };
+    list.appendChild(el);
+  });
+
+  dropdown.classList.remove("hidden");
+}
+
+dropdown.onclick = () => dropdown.classList.add("hidden");
+list.onclick = e => e.stopPropagation();
+
+let toastTimer = null;
+
+function showSceneToast(text) {
+  const toast = document.getElementById("sceneToast");
+  if (!toast) return;
+
+  toast.textContent = text;
+  toast.classList.add("show");
+
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2200);
+}
+
+
+/* ================= Random (DIY ONLY) ================= */
+let lastRandomKey = null;
+
+function applyRandomScene() {
+  if (USER_SCENES.length < 2) return;
+
+  const dice = document.getElementById("diceIcon");
+  if (dice) {
+    dice.classList.remove("dice-roll");
+    void dice.offsetWidth;
+    dice.classList.add("dice-roll");
+  }
+
+  let s;
+  do {
+    s = USER_SCENES[Math.floor(Math.random() * USER_SCENES.length)];
+  } while (s.key === lastRandomKey);
+
+  lastRandomKey = s.key;
+
+  applyScene(s.key);
+
+  // simple toast
+  showSceneToast(`Random Scene: ${s.name}`);
+}
+
+
+/* ================= Inactive Tiles when refreshing ================= */
+function setTilesInactive(state) {
+  document
+    .querySelectorAll(".scene-tile")
+    .forEach(tile => tile.classList.toggle("inactive", state));
+}
+
+/* ================= Refresh ================= */
+document.getElementById("refreshUserScenes").onclick = async () => {
+  if (!confirm("Refresh user scenes from Govee cloud?")) return;
+
+  // Visually disable all scene tiles
+  document.querySelectorAll(".scene-tile").forEach(tile => {
+    tile.classList.add("inactive");
+  });
+
+  // Trigger backend refresh
+  const r = await fetch("/api/hexa/scenes/refresh", { method: "POST" });
+  const d = await r.json();
+
+  if (!d.success) {
+    alert("Refresh failed. Check logs.");
+    document.querySelectorAll(".scene-tile").forEach(tile => {
+      tile.classList.remove("inactive");
+    });
+    return;
+  }
+
+  // Wait for backend + show feedback
+  setTimeout(() => {
+    const ts = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const now = new Date();
+    const formatted = now.toLocaleString([], {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+// persist across reload
+    localStorage.setItem("lastSceneSync", formatted);
+
+    location.reload();
+  }, 5000);
+};
+
+/* ================= Polling ================= */
+async function pollStatus() {
+  try {
+    const r = await fetch("/api/hexa/status");
+    const d = await r.json();
+    if (d && d.active_scene !== undefined) {
+      ACTIVE_SCENE = d.active_scene;
+      updateSceneTiles();
+    }
+  } catch {}
+}
+
+updateSceneTiles();
+setInterval(pollStatus, 2000);
+
+// Restore last sync time after reload
+const last = localStorage.getItem("lastSceneSync");
+if (last) {
+  const el = document.getElementById("lastSync");
+  if (el) el.textContent = last;
+}
+
+</script>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<div id="sceneToast" class="scene-toast">Scene</div>
+</body>
+</html>

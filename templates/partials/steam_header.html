@@ -1,0 +1,62 @@
+<div class="header">
+    <div class="header-left">
+        <a href="{{ back_url if back_url else url_for('steam.steam_program') }}"
+           class="header-btn back-btn">
+            <img src="{{ url_for('static', filename='icons/back.svg') }}"
+                 class="icon-img"
+                 alt="Back">
+        </a>
+
+        <!-- Time -->
+        <span id="header-time" class="header-time">--:--</span>
+    </div>
+
+    <h1 class="header-title">{{ title | default("Steam") }}</h1>
+
+    <div class="header-status" style="display:flex; align-items:center; gap:10px;">
+
+        <!-- Surface button -->
+        <button
+            class="header-btn surface-btn"
+            onclick="cycleSurface()"
+            title="Change surface"
+        >
+            <img src="{{ url_for('static', filename='icons/layers.svg') }}"
+                 class="icon-img"
+                 alt="Surface">
+        </button>
+
+        <!-- Theme button -->
+        <button
+            class="header-btn theme-btn"
+            onclick="cycleTheme()"
+            title="Change theme"
+        >
+            <img src="{{ url_for('static', filename='icons/palette.svg') }}"
+                 class="icon-img"
+                 alt="Theme">
+        </button>
+
+        {% if last_online and last_online.avatar %}
+            <img src="{{ last_online.avatar }}"
+                 alt="Profile"
+                 style="
+                    width:32px;
+                    height:32px;
+                    border-radius:50%;
+                    object-fit:cover;
+                 ">
+        {% endif %}
+
+        <span id="steam-dot"
+              class="status-dot {{ last_online.status if last_online else 'unknown' }}">
+        </span>
+
+        <span id="steam-text">
+            {{ last_online.text if last_online else 'Unknown' }}
+        </span>
+    </div>
+</div>
+
+<!-- Theme + surface logic -->
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>

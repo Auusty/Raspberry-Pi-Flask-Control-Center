@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Upload Files</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="page upload-page">
+
+{# ================= Header config ================= #}
+{% set title = "Upload Files" %}
+{% set back_url = url_for('programs') %}
+{% set back_icon = url_for('static', filename='icons/back.svg') %}
+{% set show_time = true %}
+
+{# Status content is controlled by JS on this page #}
+{% include "partials/header.html" %}
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="upload-panel">
+
+        <div id="dropZone" class="tile drop-zone">
+            <div class="drop-title">Drop files here</div>
+            <div class="drop-sub">or tap to choose a file</div>
+        </div>
+
+        <input id="fileInput" type="file">
+        <div id="uploadStatus" class="upload-status"></div>
+
+    </div>
+</div>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+<script>
+
+/* ==================================================
+   Elements
+================================================== */
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const statusEl = document.getElementById("uploadStatus");
+
+const dot  = document.querySelector(".header-status .status-dot");
+const text = document.createElement("span");
+dot.after(text);
+
+let pcOnline = false;
+
+/* ==================================================
+   PC Health
+================================================== */
+async function checkPCHealth() {
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+
+        pcOnline = !!data.online;
+
+        if (!pcOnline) {
+            dropZone.classList.add("disabled");
+            dot.className = "status-dot offline";
+            text.textContent = "PC Offline";
+            statusEl.textContent = "PC must be online to upload files";
+            statusEl.className = "upload-status error";
+        } else {
+            dropZone.classList.remove("disabled");
+            dot.className = "status-dot online";
+            text.textContent = "PC Online";
+            statusEl.textContent = "";
+            statusEl.className = "upload-status";
+        }
+    } catch {
+        pcOnline = false;
+        dropZone.classList.add("disabled");
+        dot.className = "status-dot offline";
+        text.textContent = "PC Offline";
+        statusEl.textContent = "PC must be online to upload files";
+        statusEl.className = "upload-status error";
+    }
+}
+
+/* ==================================================
+   Click / Drag
+================================================== */
+dropZone.addEventListener("click", () => {
+    if (!pcOnline) return;
+    fileInput.click();
+});
+
+["dragenter", "dragover"].forEach(evt => {
+    dropZone.addEventListener(evt, e => {
+        if (!pcOnline) return;
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+});
+
+["dragleave", "drop"].forEach(evt => {
+    dropZone.addEventListener(evt, e => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+    });
+});
+
+dropZone.addEventListener("drop", e => {
+    if (!pcOnline) return;
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+});
+
+fileInput.addEventListener("change", () => {
+    if (!pcOnline) return;
+    if (fileInput.files.length) uploadFile(fileInput.files[0]);
+});
+
+/* ==================================================
+   Upload
+================================================== */
+async function uploadFile(file) {
+    if (!pcOnline) {
+        statusEl.textContent = "PIN required";
+        statusEl.className = "upload-status error";
+        return;
+    }
+
+    statusEl.textContent = `Uploading ${file.name}…`;
+    statusEl.className = "upload-status";
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+        const res = await fetch("/api/upload", { method: "POST", body: form });
+        const data = await res.json();
+        if (!data.success) throw new Error();
+
+        statusEl.textContent = "Uploaded ✓  Sent to PC";
+        statusEl.classList.add("success");
+    } catch {
+        statusEl.textContent = "Upload failed";
+        statusEl.classList.add("error");
+    }
+}
+
+/* ==================================================
+   Start
+================================================== */
+checkPCHealth();
+setInterval(checkPCHealth, 5000);
+</script>
+
+</body>
+</html>

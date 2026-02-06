@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>System Login</title>
+    {% include "partials/head.html" %}
+</head>
+
+
+<body class="login-page">
+
+<div class="login-box {% if error %}shake{% endif %}" id="loginBox">
+    <h2>System Locked</h2>
+
+    <!-- Error message -->
+    <div class="error {% if not error %}hidden{% endif %}" id="errorMsg">{{ error }}</div>
+
+    <div id="display" class="pin-display">----</div>
+
+    <form method="POST" id="pinForm">
+        <input type="hidden" name="pin" id="pinInput">
+
+        <div class="keypad">
+            <button type="button" onclick="add(1)">1</button>
+            <button type="button" onclick="add(2)">2</button>
+            <button type="button" onclick="add(3)">3</button>
+            <button type="button" onclick="add(4)">4</button>
+            <button type="button" onclick="add(5)">5</button>
+            <button type="button" onclick="add(6)">6</button>
+            <button type="button" onclick="add(7)">7</button>
+            <button type="button" onclick="add(8)">8</button>
+            <button type="button" onclick="add(9)">9</button>
+            <button type="button" class="clear" onclick="clearPin()">Clear</button>
+            <button type="button" onclick="add(0)">0</button>
+            <div></div>
+        </div>
+
+        <div class="keypad-bottom">
+            <button type="button" class="back" onclick="pin=''; window.location.href='/'">⬅ Back</button>
+            <button type="submit" class="enter">Enter</button>
+        </div>
+    </form>
+</div>
+
+<script>
+let pin = "";
+
+function add(num) {
+    if (pin.length >= 6) return;
+    pin += num;
+    update();
+    hideError();
+}
+
+function clearPin() {
+    pin = "";
+    update();
+    hideError();
+}
+
+function update() {
+    document.getElementById("pinInput").value = pin;
+    document.getElementById("display").textContent = "•".repeat(pin.length).padEnd(4, "-");
+}
+
+// Hide error immediately when typing
+function hideError() {
+    const errorDiv = document.getElementById("errorMsg");
+    if (errorDiv) errorDiv.classList.add('hidden');
+}
+
+// Fade error automatically after 1 second
+window.addEventListener('DOMContentLoaded', () => {
+    const errorDiv = document.getElementById("errorMsg");
+    const loginBox = document.getElementById("loginBox");
+    if (errorDiv && errorDiv.textContent.trim() !== "") {
+        setTimeout(() => {
+            errorDiv.classList.add('hidden');
+            loginBox.classList.remove('shake');
+        }, 1000);
+    }
+});
+</script>
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Control Center Main Page</title>
+    {% include "partials/head.html" %}
+</head>
+
+
+<body class="index-page page">
+
+{# ================= Header config ================= #}
+{% set title = "Austin's Control Panel" %}
+{% set status_text = "Online" %}
+{% set status_class = "" %}
+{% set back_url = url_for('system.system_login') %}
+{% set back_icon = url_for('static', filename='icons/settings.svg') %}
+{% set show_time = true %}
+
+{% include "partials/header.html" %}
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid main-grid">
+
+        <!-- Programs -->
+        <a href="{{ url_for('programs') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/apps.svg') }}"
+                     class="icon-img"
+                     alt="Programs">
+            </div>
+            <div class="label">Programs</div>
+        </a>
+
+        <!-- Printer -->
+        <a href="{{ url_for('p1s.p1s') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/printer.svg') }}"
+                     class="icon-img"
+                     alt="Printer">
+            </div>
+            <div class="label">Printer</div>
+        </a>
+
+        <!-- Lights -->
+        <a href="{{ url_for('hexa.hexa_glide') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/light.svg') }}"
+                     class="icon-img"
+                     alt="Lights">
+            </div>
+            <div class="label">Lights</div>
+        </a>
+
+        <!-- Weather -->
+        <a href="{{ url_for('weather.weather_page') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/weather.svg') }}"
+                     class="icon-img"
+                     alt="Weather">
+            </div>
+            <div class="label">Weather</div>
+        </a>
+
+    </div>
+</div>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+</body>
+</html>

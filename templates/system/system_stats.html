@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <title>System Stats</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="system-page page">
+
+{# ================= Header config ================= #}
+{% set title = "System Stats" %}
+{% set status_text = "Online" %}
+{% set status_class = "" %}
+{% set back_url = url_for('system.system') %}
+{% set back_icon = url_for('static', filename='icons/back.svg') %}
+{% set show_time = true %}
+
+{% include "partials/header.html" %}
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid">
+
+        <!-- CPU -->
+        <div class="tile">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/cpu.svg') }}"
+                     class="icon-img"
+                     alt="CPU">
+            </div>
+            <div class="label">CPU</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="cpu-usage">0%</div>
+            </div>
+        </div>
+
+        <!-- RAM -->
+        <div class="tile">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/ram.svg') }}"
+                     class="icon-img"
+                     alt="RAM">
+            </div>
+            <div class="label">RAM</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="ram-usage">0%</div>
+            </div>
+        </div>
+
+        <!-- Disk -->
+        <div class="tile">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/disk.svg') }}"
+                     class="icon-img"
+                     alt="Disk">
+            </div>
+            <div class="label">Disk</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="disk-usage">0%</div>
+            </div>
+        </div>
+
+        <!-- Back -->
+        <a href="{{ url_for('system.system') }}" class="tile">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/back.svg') }}"
+                     class="icon-img"
+                     alt="Back">
+            </div>
+            <div class="label">Back</div>
+        </a>
+
+    </div>
+</div>
+
+<script>
+function updateBar(el, value) {
+    el.style.width = value + "%";
+    el.innerText = value + "%";
+    el.classList.remove("warn", "danger");
+
+    if (value >= 85) el.classList.add("danger");
+    else if (value >= 65) el.classList.add("warn");
+}
+
+async function fetchStats() {
+    try {
+        const res = await fetch("/api/system-stats");
+        const data = await res.json();
+
+        updateBar(document.getElementById("cpu-usage"), data.cpu);
+        updateBar(document.getElementById("ram-usage"), data.ram);
+        updateBar(document.getElementById("disk-usage"), data.disk);
+
+    } catch (err) {
+        console.error("Failed to fetch system stats:", err);
+    }
+}
+
+setInterval(fetchStats, 2000);
+fetchStats();
+</script>
+
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+</body>
+</html>

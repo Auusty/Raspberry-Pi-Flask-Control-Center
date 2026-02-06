@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Pinned Games</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="page programs-page steam-pinned-page">
+{% set title = "Pinned Games" %}
+{% include "partials/steam_header.html" %}
+
+<!-- ===== Dashboard ===== -->
+<div class="dashboard">
+    <div class="tile-grid">
+        {% for slot, appid in pinned.items() %}
+        {% set game = owned_games | selectattr("appid", "equalto", appid | int) | first %}
+        <div class="tile pinned-tile steam-game-tile pinned-pc tap-hold"
+             data-slot="{{ slot }}"
+             data-appid="{{ appid if appid is not none else '' }}"
+             data-name="{{ game.name if game else '' }}"
+             onmousedown="startPress(event, this)"
+             onmouseup="endPress(this)"
+             ontouchstart="startPress(event, this)"
+             ontouchend="endPress(this)">
+
+            {% if game %}
+            <div class="pin-art-wrap">
+                <img class="pin-art"
+                     src="https://cdn.cloudflare.steamstatic.com/steam/apps/{{ game.appid }}/header.jpg?v={{ game.appid }}"
+                     onerror="this.style.display='none'">
+            </div>
+            {% endif %}
+
+            <div class="label pin-label">
+                <div class="game-name">
+                    {{ game.name if game else "Empty" }}
+                </div>
+
+                {% if game and game.hours is defined %}
+                    <small class="game-hours">
+                        {{ game.hours }} hrs (total)
+                    </small>
+                {% endif %}
+
+                {% if game %}
+                    {% set count = friends_playing.get(game.appid, 0) %}
+                    {% if count > 0 %}
+                        <div class="friends-playing">
+                            {{ count }} friend{{ 's' if count != 1 else '' }} in-game
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <div class="in-game-badge">IN&nbsp;GAME</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ===== Picker ===== -->
+<div id="pinOverlay" class="pin-overlay" onclick="closePicker()"></div>
+
+<div id="pinPanel" class="pin-panel">
+    <div class="pin-panel-header">
+        <div class="pin-panel-title">Choose Game</div>
+        <button class="pin-panel-close" onclick="closePicker()">×</button>
+    </div>
+    <div class="pin-list" id="pinList"></div>
+</div>
+
+<!-- ===== Launch Confirm ===== -->
+<div id="launchOverlay" class="pin-overlay" onclick="closeLaunchConfirm()"></div>
+
+<div id="launchConfirm" class="pin-panel">
+    <div class="pin-panel-header">
+        <div class="pin-panel-title">Launch Game</div>
+        <button class="pin-panel-close" onclick="closeLaunchConfirm()">×</button>
+    </div>
+
+    <div class="launch-body">
+        <div class="launch-title" id="launchGameName">Game Name</div>
+        <div class="launch-subtitle">
+            Are you sure you want to launch this game?
+        </div>
+
+        <div class="launch-actions">
+            <button class="tile" id="launchBtn" onclick="confirmLaunch()">▶ Launch</button>
+            <button class="tile" onclick="closeLaunchConfirm()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Data ===== -->
+<script id="recent-games-data" type="application/json">
+{{ recent_games | tojson | safe }}
+</script>
+<script id="all-games-data" type="application/json">
+{{ all_games | tojson | safe }}
+</script>
+<script id="friends-playing-data" type="application/json">
+{{ friends_playing | tojson | safe }}
+</script>
+
+<script>
+const RECENT_GAMES = JSON.parse(document.getElementById("recent-games-data").textContent || "[]");
+const ALL_GAMES = JSON.parse(document.getElementById("all-games-data").textContent || "[]");
+const FRIENDS_PLAYING = JSON.parse(document.getElementById("friends-playing-data").textContent || "{}");
+
+let pressTimer = null;
+let activeTile = null;
+let didLongPress = false;
+let pendingLaunchAppId = null;
+let pcOnline = false;
+
+const HOLD_TIME = 600;
+
+/* ===== PC Health (launch only) ===== */
+async function checkPCHealth() {
+    try {
+        const res = await fetch("/api/p1s/pc_health", { cache: "no-store" });
+        const data = await res.json();
+        pcOnline = !!data.online;
+
+        const btn = document.getElementById("launchBtn");
+        if (btn) btn.classList.toggle("disabled", !pcOnline);
+    } catch {
+        pcOnline = false;
+        const btn = document.getElementById("launchBtn");
+        if (btn) btn.classList.add("disabled");
+    }
+}
+
+/* ===== Press Handling ===== */
+function startPress(e, tile) {
+    if (e && e.cancelable) e.preventDefault();
+    didLongPress = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+        didLongPress = true;
+        openPicker(tile);
+    }, HOLD_TIME);
+}
+
+function endPress(tile) {
+    clearTimeout(pressTimer);
+    if (didLongPress) return;
+
+    const appid = tile.dataset.appid;
+    if (!appid) return;
+
+    pendingLaunchAppId = appid;
+
+    const nameEl = tile.querySelector('.pin-label');
+    const friendsEl = tile.querySelector('.friends-playing');
+    let nameText = (nameEl?.textContent || "Unknown Game").trim();
+    if (friendsEl) {
+        nameText = nameText.replace(friendsEl.textContent, '').trim();
+    }
+
+    document.getElementById("launchGameName").textContent = nameText;
+
+    document.getElementById("launchOverlay").classList.add("show");
+    document.getElementById("launchConfirm").classList.add("show");
+}
+
+function getGameHours(appid) {
+    const game =
+        ALL_GAMES.find(g => g.appid === appid) ||
+        RECENT_GAMES.find(g => g.appid === appid);
+
+    return game && typeof game.hours === "number"
+        ? game.hours
+        : null;
+}
+
+/* ===== Launch ===== */
+function confirmLaunch() {
+    if (!pendingLaunchAppId || !pcOnline) return;
+    fetch(`/open_steam/${pendingLaunchAppId}`);
+    closeLaunchConfirm();
+}
+
+function closeLaunchConfirm() {
+    pendingLaunchAppId = null;
+    document.getElementById("launchOverlay").classList.remove("show");
+    document.getElementById("launchConfirm").classList.remove("show");
+}
+
+/* ===== Picker ===== */
+function openPicker(tile) {
+    activeTile = tile;
+    document.querySelectorAll('.pinned-tile').forEach(t => t.classList.remove('editing'));
+    tile.classList.add('editing');
+
+    const currentAppId = tile.dataset.appid ? parseInt(tile.dataset.appid, 10) : null;
+    const list = document.getElementById('pinList');
+    list.innerHTML = "";
+
+    const clearItem = document.createElement('div');
+    clearItem.className = 'pin-item';
+    clearItem.textContent = "Clear Game";
+    clearItem.onclick = clearGame;
+    list.appendChild(clearItem);
+    list.appendChild(divider());
+
+    if (RECENT_GAMES.length) {
+        list.appendChild(section("Recently Played"));
+        RECENT_GAMES.forEach(g =>
+            list.appendChild(item(g.name, g.appid, g.appid === currentAppId))
+        );
+        list.appendChild(divider());
+    }
+
+    list.appendChild(section("All Games"));
+    ALL_GAMES.forEach(g =>
+        list.appendChild(item(g.name, g.appid, g.appid === currentAppId))
+    );
+
+    document.getElementById('pinOverlay').classList.add('show');
+    document.getElementById('pinPanel').classList.add('show');
+}
+
+function closePicker() {
+    document.getElementById('pinOverlay').classList.remove('show');
+    document.getElementById('pinPanel').classList.remove('show');
+    document.querySelectorAll('.pinned-tile').forEach(t => t.classList.remove('editing'));
+    activeTile = null;
+}
+
+/* ===== Helpers ===== */
+function section(text) {
+    const d = document.createElement('div');
+    d.className = 'pin-section';
+    d.textContent = text;
+    return d;
+}
+
+function divider() {
+    const d = document.createElement('div');
+    d.className = 'pin-divider';
+    return d;
+}
+
+function item(text, appid, selected) {
+    const d = document.createElement('div');
+    d.className = 'pin-item' + (selected ? ' selected' : '');
+
+    const count = FRIENDS_PLAYING[appid] || 0;
+
+    d.innerHTML = `
+        <span>${text}</span>
+        ${count > 0 ? `
+    <span class="pin-item-friends">
+        <img src="/static/icons/gamecontroller.svg">
+        <span class="pin-item-friends-text">friends playing</span>
+        <span class="pin-item-friends-count">${count}</span>
+    </span>
+` : ``}
+
+    `;
+
+    d.onclick = () => pickGame(text, appid);
+    return d;
+}
+
+/* ===== Save Pin ===== */
+function pickGame(name, appid) {
+    if (!activeTile) return;
+
+    const slot = activeTile.dataset.slot;
+    activeTile.dataset.appid = appid;
+    activeTile.dataset.name = name;
+
+    const label = activeTile.querySelector(".pin-label");
+    if (!label) return;
+
+    // Preserve friends-playing if it exists
+    const existingFriends = label.querySelector(".friends-playing");
+
+    // Clear label safely
+    label.innerHTML = "";
+
+    // Game name
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "game-name";
+    nameDiv.textContent = name;
+    label.appendChild(nameDiv);
+
+    // Total hours
+    const hours = getGameHours(appid);
+    if (hours !== null) {
+        const hoursEl = document.createElement("small");
+        hoursEl.className = "game-hours";
+        hoursEl.textContent = `${hours} hrs (total)`;
+        label.appendChild(hoursEl);
+    }
+
+    // Friends playing (if any)
+    if (existingFriends) {
+        label.appendChild(existingFriends);
+    }
+
+    // Header art
+    const img = activeTile.querySelector(".pin-art");
+    if (img) {
+        img.style.display = "";
+        img.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg?v=${appid}`;
+    } else {
+        const wrap = document.createElement("div");
+        wrap.className = "pin-art-wrap";
+
+        const newImg = document.createElement("img");
+        newImg.className = "pin-art";
+        newImg.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg?v=${appid}`;
+        newImg.onerror = () => { newImg.style.display = "none"; };
+
+        wrap.appendChild(newImg);
+        activeTile.insertBefore(wrap, activeTile.firstChild);
+    }
+
+    // Save pin
+    fetch("/api/steam/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot, appid })
+    }).catch(() => {});
+
+    closePicker();
+}
+
+
+function clearGame() {
+    if (!activeTile) return;
+
+    const slot = activeTile.dataset.slot;
+
+    fetch("/api/steam/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot, appid: null })
+    }).then(() => location.reload());
+
+    closePicker();
+}
+
+/* ===== Start ===== */
+checkPCHealth();
+setInterval(checkPCHealth, 5000);
+</script>
+
+{% include "partials/steam_status_script.html" %}
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+<script>
+/* ==================================================
+   Highlight currently playing Steam game (by NAME)
+================================================== */
+function highlightCurrentSteamGame(gameName) {
+    const tiles = document.querySelectorAll(".steam-game-tile");
+
+    tiles.forEach(tile => tile.classList.remove("steam-playing"));
+    if (!gameName) return;
+
+    const normalized = gameName.toLowerCase().trim();
+    tiles.forEach(tile => {
+        const tileName = (tile.dataset.name || "").toLowerCase().trim();
+        if (tileName === normalized) {
+            tile.classList.add("steam-playing");
+        }
+    });
+}
+</script>
+
+</body>
+</html>

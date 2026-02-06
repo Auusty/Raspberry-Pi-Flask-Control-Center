@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtualenvs
+venv/
+.venv/
+
+# Env files (keep README, ignore real values if someone adds them)
+envs/*.env
+
+# Runtime folders
+logs/
+uploads/
+data/*.json
+data/*.txt
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>P1S Camera</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="page camera-page">
+
+<!-- ================= Header ================= -->
+<div class="header">
+    <div class="header-left">
+        <a href="{{ url_for('p1s.p1s') }}" class="header-btn back-btn">
+            <img src="{{ url_for('static', filename='icons/back.svg') }}"
+                 class="icon-img"
+                 alt="Back">
+        </a>
+
+        <span id="header-time" class="header-time">--:--</span>
+    </div>
+
+    <h1 class="header-title">P1S Camera</h1>
+
+    <div class="header-status" style="display:flex; align-items:center; gap:10px;">
+
+        <!-- Surface button -->
+        <button
+            class="header-btn surface-btn"
+            onclick="cycleSurface()"
+            title="Change surface"
+        >
+            <img src="{{ url_for('static', filename='icons/layers.svg') }}"
+                 class="icon-img"
+                 alt="Surface">
+        </button>
+
+        <!-- Theme button -->
+        <button
+            class="header-btn theme-btn"
+            onclick="cycleTheme()"
+            title="Change theme"
+        >
+            <img src="{{ url_for('static', filename='icons/palette.svg') }}"
+                 class="icon-img"
+                 alt="Theme">
+        </button>
+
+        <!-- Printer status -->
+        <span id="p1s-status-dot" class="status-dot unknown"></span>
+        <span id="p1s-header-status">--</span>
+    </div>
+</div>
+
+<!-- Global theme + surface logic -->
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="camera-tile tile tile-media">
+        <div class="camera-frame">
+            <img src="{{ url_for('p1s.p1s_camera') }}" alt="P1S Camera">
+        </div>
+    </div>
+</div>
+
+<!-- ================= Header Status Script ================= -->
+<script>
+async function updateHeaderStatus() {
+    try {
+        const res = await fetch("/api/p1s/status", { cache: "no-store" });
+        if (!res.ok) throw new Error();
+
+        const data = await res.json();
+
+        const state = data.state || "Unknown";
+        const pct = Number(data.progress);
+        const safePct = Number.isFinite(pct) ? pct : 0;
+
+        const dot = document.getElementById("p1s-status-dot");
+        const text = document.getElementById("p1s-header-status");
+
+        if (state === "Printing") {
+            text.textContent = `Printing · ${safePct}%`;
+        } else {
+            text.textContent = state;
+        }
+
+        dot.className = "status-dot";
+
+        if (state === "Printing") {
+            dot.classList.add("ingame");   // blue
+        } else if (state === "Preparing" || state === "Paused") {
+            dot.classList.add("away");     // orange
+        } else if (state === "Idle" || state === "Complete") {
+            dot.classList.add("online");   // green
+        } else if (state === "Error" || state === "Offline") {
+            dot.classList.add("offline");  // red
+        } else {
+            dot.classList.add("unknown");
+        }
+
+    } catch {
+        const dot = document.getElementById("p1s-status-dot");
+        const text = document.getElementById("p1s-header-status");
+        dot.className = "status-dot offline";
+        text.textContent = "Offline";
+    }
+}
+
+// Initial load + poll
+updateHeaderStatus();
+setInterval(updateHeaderStatus, 2000);
+</script>
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>P1S AMS</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="index-page page">
+
+<!-- ================= Header ================= -->
+<div class="header">
+    <div class="header-left">
+        <a href="{{ url_for('p1s.p1s') }}" class="header-btn back-btn">
+            <img src="{{ url_for('static', filename='icons/back.svg') }}"
+                 class="icon-img"
+                 alt="Back">
+        </a>
+
+        <span id="header-time" class="header-time">--:--</span>
+    </div>
+
+    <h1 class="header-title">AMS</h1>
+
+    <div class="header-status" style="display:flex; align-items:center; gap:10px;">
+
+        <!-- Surface button -->
+        <button
+            class="header-btn surface-btn"
+            onclick="cycleSurface()"
+            title="Change surface"
+        >
+            <img src="{{ url_for('static', filename='icons/layers.svg') }}"
+                 class="icon-img"
+                 alt="Surface">
+        </button>
+
+        <!-- Theme button -->
+        <button
+            class="header-btn theme-btn"
+            onclick="cycleTheme()"
+            title="Change theme"
+        >
+            <img src="{{ url_for('static', filename='icons/palette.svg') }}"
+                 class="icon-img"
+                 alt="Theme">
+        </button>
+
+        <!-- AMS / printer status (unchanged) -->
+        <span id="p1s-status-dot" class="status-dot unknown"></span>
+        <span id="p1s-header-status">--</span>
+    </div>
+</div>
+
+<!-- Global theme + surface logic -->
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+<!-- ================= Dashboard ================= -->
+<div class="dashboard">
+    <div class="tile-grid main-grid">
+
+        {% for tray in trays %}
+            {% set raw_color = tray.tray_color or "444444FF" %}
+            {% set bg_color = raw_color[:6] %}
+            {% set is_empty = tray.tray_type is none and tray.tray_sub_brands is none %}
+
+            <div class="tile ams-tile tap-cycle
+                {% if is_empty %} inactive{% endif %}
+                {% if tray.id|int == active_tray|int %} active-ams{% endif %}"
+                data-bg="#{{ bg_color }}"
+                onclick="cycleInfo(this)">
+
+                <div class="label"
+                     style="
+                        height:100%;
+                        display:grid;
+                        grid-template-rows:auto 1fr auto;
+                        text-align:center;
+                     ">
+
+                    <div style="font-weight:700; font-size:1.25em;">
+                        Slot {{ tray.id|int + 1 }}
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        min-height:3.2em;
+                        font-size:1.05em;
+                    ">
+                        {{ tray.tray_sub_brands or tray.tray_type or "Unknown" }}
+                    </div>
+
+                    <div style="min-height:1.6em;">
+                        <small class="ams-info"
+                               data-step="-1"
+                               data-remain="{{ tray.remain if tray.remain is not none else '—' }}"
+                               data-humidity="{{ ams_humidity if ams_humidity is not none else '—' }}"
+                               data-temp="{{ ams_temp if ams_temp is not none else '—' }}"
+                               data-weight="{{ tray.tray_weight if tray.tray_weight is not none else '—' }}"
+                               data-remain-grams="{% if tray.tray_weight and tray.remain is not none %}
+                                   {{ (tray.tray_weight|float * tray.remain|float / 100) | round(0) }}
+                               {% else %}
+                                   —
+                               {% endif %}"
+                               style="display:none;">
+                        </small>
+                    </div>
+
+                </div>
+            </div>
+        {% endfor %}
+
+        {% for _ in range(4 - trays|length) %}
+        <div class="tile inactive">
+            <div class="label">Empty Slot</div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+
+{% include "partials/screensaver.html" %}
+
+<!-- ================= Scripts ================= -->
+<script>
+async function updateHeaderStatus() {
+    try {
+        const res = await fetch("/api/p1s/status", { cache: "no-store" });
+        if (!res.ok) throw new Error();
+
+        const data = await res.json();
+        const state = data.state || "Unknown";
+        const pct = Number(data.progress);
+        const safePct = Number.isFinite(pct) ? pct : 0;
+
+        const dot = document.getElementById("p1s-status-dot");
+        const text = document.getElementById("p1s-header-status");
+
+        text.textContent =
+            state === "Printing"
+                ? `Printing · ${safePct}%`
+                : state;
+
+        dot.className = "status-dot";
+
+        if (state === "Printing") dot.classList.add("ingame");
+        else if (state === "Preparing" || state === "Paused") dot.classList.add("away");
+        else if (state === "Idle" || state === "Complete") dot.classList.add("online");
+        else if (state === "Error" || state === "Offline") dot.classList.add("offline");
+        else dot.classList.add("unknown");
+
+    } catch {
+        document.getElementById("p1s-status-dot").className = "status-dot offline";
+        document.getElementById("p1s-header-status").textContent = "Offline";
+    }
+}
+
+updateHeaderStatus();
+setInterval(updateHeaderStatus, 2000);
+
+/* ================= AMS Color + Contrast ================= */
+
+function getContrastTextColor(hex) {
+    if (!hex) return "#fff";
+    hex = hex.replace("#", "");
+
+    const r = parseInt(hex.substr(0,2), 16);
+    const g = parseInt(hex.substr(2,2), 16);
+    const b = parseInt(hex.substr(4,2), 16);
+
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 160 ? "#000" : "#fff";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".tile[data-bg]").forEach(tile => {
+        const bg = tile.dataset.bg || "#444444";
+        tile.style.backgroundColor = bg;
+        tile.style.color = getContrastTextColor(bg);
+        tile.style.textShadow = "0 1px 2px rgba(0,0,0,0.35)";
+    });
+});
+
+/* ================= Tap cycle ================= */
+
+function cycleInfo(tile) {
+    const info = tile.querySelector(".ams-info");
+    if (!info) return;
+
+    let step = parseInt(info.dataset.step, 10);
+
+    const remain      = info.dataset.remain;
+    const humidity    = info.dataset.humidity;
+    const temp        = info.dataset.temp;
+    const totalWeight = info.dataset.weight;
+    const remainGrams = info.dataset.remainGrams;
+
+    switch (step) {
+        case -1:
+            info.textContent = `Remaining: ${remain}%`;
+            info.style.display = "block";
+            info.dataset.step = 0;
+            break;
+        case 0:
+            info.textContent = `Humidity: ${humidity}%`;
+            info.dataset.step = 1;
+            break;
+        case 1:
+            info.textContent = `AMS Temp: ${temp}°C`;
+            info.dataset.step = 2;
+            break;
+        case 2:
+            info.textContent = `Spool: ${remainGrams}g / ${totalWeight}g`;
+            info.dataset.step = 3;
+            break;
+        default:
+            info.style.display = "none";
+            info.textContent = "";
+            info.dataset.step = -1;
+    }
+}
+</script>
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Steam</title>
+    {% include "partials/head.html" %}
+</head>
+
+<body class="programs-page page">
+
+{% set title = "Steam" %}
+{% set back_url = url_for('programs') %}
+{% include "partials/steam_header.html" %}
+
+<!-- ===== Dashboard ===== -->
+<div class="dashboard">
+    <div class="tile-grid main-grid">
+
+        <!-- Recent Games -->
+        <a href="{{ url_for('steam.steam_recent') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/recent.svg') }}"
+                     class="icon-img"
+                     alt="Recent Games">
+            </div>
+            <div class="label">Recent Games</div>
+        </a>
+
+        <!-- Pinned Games -->
+        <a href="{{ url_for('steam.steam_pinned') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/gamecontroller.svg') }}"
+                     class="icon-img"
+                     alt="Pinned Games">
+            </div>
+            <div class="label">Pinned Games</div>
+        </a>
+
+        <!-- Most Played -->
+        <a href="{{ url_for('steam.steam_most_played') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/star.svg') }}"
+                     class="icon-img"
+                     alt="Most Played">
+            </div>
+            <div class="label">Most Played</div>
+        </a>
+
+        <!-- Friends -->
+        <a href="{{ url_for('steam.steam_friends') }}" class="tile tap-nav">
+            <div class="icon">
+                <img src="{{ url_for('static', filename='icons/group.svg') }}"
+                     class="icon-img"
+                     alt="Friends">
+            </div>
+            <div class="label">Friends</div>
+        </a>
+
+    </div>
+</div>
+
+{% include "partials/steam_status_script.html" %}
+{% include "partials/screensaver.html" %}
+<script src="{{ url_for('static', filename='js/header_time.js') }}"></script>
+
+</body>
+</html>
